@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import ModulePage from "./pages/ModulePage";
 import TrainingPage from "./pages/TrainingPage";
 import SettingsPage from "./pages/SettingsPage";
+import AuthPage from "./pages/AuthPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -19,6 +20,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/auth" element={<AuthPage />} />
           <Route path="/module/:moduleId" element={<ModulePage />} />
           <Route path="/training" element={<TrainingPage />} />
           <Route path="/settings" element={<SettingsPage />} />
