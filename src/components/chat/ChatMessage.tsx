@@ -48,7 +48,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
       {/* Message Content */}
       <div
         className={cn(
-          "flex-1 max-w-[80%] rounded-lg p-4 border",
+          "flex-1 max-w-[85%] sm:max-w-[75%] lg:max-w-[60%] rounded-lg p-4 border overflow-hidden",
           isUser
             ? "bg-secondary/10 border-secondary/30"
             : isWarning
@@ -57,7 +57,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
         )}
       >
         {/* Header */}
-        <div className="flex items-center gap-2 mb-2">
+        <div className="flex items-center gap-2 mb-2 flex-wrap">
           <span
             className={cn(
               "text-xs font-mono font-semibold",
@@ -76,7 +76,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
         </div>
 
         {/* Content */}
-        <div className="text-sm">
+        <div className="text-sm break-words overflow-x-auto">
           {isUser ? (
             <p className="whitespace-pre-wrap">{message.content}</p>
           ) : (

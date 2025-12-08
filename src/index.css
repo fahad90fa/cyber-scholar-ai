@@ -202,12 +202,18 @@
 /* Markdown styling */
 .markdown-content {
   @apply text-foreground leading-relaxed;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  hyphens: auto;
 }
 
 .markdown-content h1,
 .markdown-content h2,
 .markdown-content h3 {
   @apply text-primary font-semibold mt-6 mb-3;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .markdown-content h1 { @apply text-2xl; }
@@ -216,6 +222,8 @@
 
 .markdown-content p {
   @apply mb-4;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .markdown-content ul,
@@ -225,6 +233,8 @@
 
 .markdown-content li {
   @apply mb-2;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .markdown-content ul li {
@@ -237,6 +247,8 @@
 
 .markdown-content a {
   @apply text-secondary hover:text-secondary/80 underline;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .markdown-content blockquote {
@@ -250,6 +262,8 @@
 .markdown-content th,
 .markdown-content td {
   @apply border border-border px-3 py-2 text-left;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .markdown-content th {

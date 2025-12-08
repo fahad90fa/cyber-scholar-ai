@@ -316,3 +316,7 @@ class AdminService {
 }
 
 export const adminService = new AdminService();
+
+export function setAdminPassword(password: string): void {
+  localStorage.setItem("admin_password", password);
+}

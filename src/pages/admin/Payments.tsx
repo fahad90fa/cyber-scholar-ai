@@ -8,22 +8,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { adminAction } from '@/services/adminService';
+import { adminService, type AdminPayment } from '@/services/adminService';
 import { formatCurrency } from '@/lib/formatCurrency';
 import { toast } from 'sonner';
-import type { PaymentRequest } from '@/types/subscription.types';
-
-interface PaymentWithUser extends PaymentRequest {
-  profiles: {
-    email: string;
-    full_name: string;
-  } | null;
-}
 
 export default function AdminPayments() {
-  const [payments, setPayments] = useState<PaymentWithUser[]>([]);
+  const [payments, setPayments] = useState<AdminPayment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedPayment, setSelectedPayment] = useState<PaymentWithUser | null>(null);
+  const [selectedPayment, setSelectedPayment] = useState<AdminPayment | null>(null);
   const [actionType, setActionType] = useState<'confirm' | 'reject' | 'view' | null>(null);
   const [adminNotes, setAdminNotes] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
@@ -34,7 +26,7 @@ export default function AdminPayments() {
 
   const loadPayments = async () => {
     try {
-      const data = await adminAction('get_payments');
+      const data = await adminService.getPayments();
       setPayments(data || []);
     } catch (error) {
       console.error('Failed to load payments:', error);
@@ -48,15 +40,7 @@ export default function AdminPayments() {
     if (!selectedPayment) return;
 
     try {
-      await adminAction('confirm_payment', {
-        paymentId: selectedPayment.id,
-        adminNotes,
-        userId: selectedPayment.user_id,
-        planId: selectedPayment.plan_id,
-        billingCycle: selectedPayment.billing_cycle,
-        amount: selectedPayment.amount,
-        tokens: selectedPayment.billing_cycle === 'yearly' ? 500 * 12 : 500, // Default to Pro tokens
-      });
+      await adminService.confirmPayment(selectedPayment.id, adminNotes);
       toast.success('Payment confirmed and subscription activated');
       setActionType(null);
       setSelectedPayment(null);
@@ -74,10 +58,7 @@ export default function AdminPayments() {
     }
 
     try {
-      await adminAction('reject_payment', {
-        paymentId: selectedPayment.id,
-        reason: rejectionReason,
-      });
+      await adminService.rejectPayment(selectedPayment.id, rejectionReason);
       toast.success('Payment rejected');
       setActionType(null);
       setSelectedPayment(null);
@@ -104,7 +85,7 @@ export default function AdminPayments() {
     }
   };
 
-  const PaymentTable = ({ paymentList, showActions = false }: { paymentList: PaymentWithUser[], showActions?: boolean }) => (
+  const PaymentTable = ({ paymentList, showActions = false }: { paymentList: AdminPayment[], showActions?: boolean }) => (
     <Table>
       <TableHeader>
         <TableRow>
@@ -121,16 +102,10 @@ export default function AdminPayments() {
         {paymentList.map((payment) => (
           <TableRow key={payment.id}>
             <TableCell>
-              <div>
-                <div className="font-medium">{payment.profiles?.full_name || 'Unknown'}</div>
-                <div className="text-sm text-muted-foreground">{payment.profiles?.email}</div>
-              </div>
+              <div className="text-sm">{payment.user_email}</div>
             </TableCell>
             <TableCell>
-              <div>
-                <div className="font-medium">{payment.plan_name}</div>
-                <div className="text-sm text-muted-foreground capitalize">{payment.billing_cycle}</div>
-              </div>
+              <div className="font-medium">{payment.plan_name}</div>
             </TableCell>
             <TableCell>{formatCurrency(payment.amount)}</TableCell>
             <TableCell className="font-mono text-sm max-w-[150px] truncate">
@@ -246,13 +221,12 @@ export default function AdminPayments() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-muted-foreground">User</Label>
-                  <p>{selectedPayment.profiles?.full_name}</p>
-                  <p className="text-sm text-muted-foreground">{selectedPayment.profiles?.email}</p>
+                  <Label className="text-muted-foreground">User Email</Label>
+                  <p>{selectedPayment.user_email}</p>
                 </div>
                 <div>
                   <Label className="text-muted-foreground">Plan</Label>
-                  <p>{selectedPayment.plan_name} ({selectedPayment.billing_cycle})</p>
+                  <p>{selectedPayment.plan_name}</p>
                 </div>
                 <div>
                   <Label className="text-muted-foreground">Amount</Label>
@@ -293,8 +267,8 @@ export default function AdminPayments() {
           {selectedPayment && (
             <div className="space-y-4">
               <div className="p-4 bg-muted rounded-lg">
-                <p><strong>User:</strong> {selectedPayment.profiles?.email}</p>
-                <p><strong>Plan:</strong> {selectedPayment.plan_name} ({selectedPayment.billing_cycle})</p>
+                <p><strong>User:</strong> {selectedPayment.user_email}</p>
+                <p><strong>Plan:</strong> {selectedPayment.plan_name}</p>
                 <p><strong>Amount:</strong> {formatCurrency(selectedPayment.amount)}</p>
               </div>
               <div>

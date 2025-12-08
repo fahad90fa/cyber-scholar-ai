@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { adminAction } from '@/services/adminService';
+import { adminService } from '@/services/adminService';
 import { formatCurrency } from '@/lib/formatCurrency';
 import { toast } from 'sonner';
 import type { SubscriptionPlan } from '@/types/subscription.types';
@@ -35,8 +35,8 @@ export default function AdminPlans() {
 
   const loadPlans = async () => {
     try {
-      const data = await adminAction('get_plans');
-      setPlans(data || []);
+      const data = await adminService.getPlans();
+      setPlans((data as SubscriptionPlan[]) || []);
     } catch (error) {
       console.error('Failed to load plans:', error);
       toast.error('Failed to load plans');
@@ -63,18 +63,15 @@ export default function AdminPlans() {
     if (!editPlan) return;
 
     try {
-      await adminAction('update_plan', {
-        planId: editPlan.id,
-        updates: {
-          name: formData.name,
-          description: formData.description,
-          monthly_price: Math.round(parseFloat(formData.monthly_price) * 100),
-          yearly_price: Math.round(parseFloat(formData.yearly_price) * 100),
-          tokens_per_month: parseInt(formData.tokens_per_month),
-          features: formData.features.split('\n').filter(f => f.trim()),
-          is_active: formData.is_active,
-          is_popular: formData.is_popular,
-        },
+      await adminService.updatePlan(editPlan.id, {
+        name: formData.name,
+        description: formData.description,
+        monthly_price: Math.round(parseFloat(formData.monthly_price) * 100),
+        yearly_price: Math.round(parseFloat(formData.yearly_price) * 100),
+        tokens_per_month: parseInt(formData.tokens_per_month),
+        features: formData.features.split('\n').filter(f => f.trim()),
+        is_active: formData.is_active,
+        is_popular: formData.is_popular,
       });
       toast.success('Plan updated');
       setEditPlan(null);
@@ -86,10 +83,7 @@ export default function AdminPlans() {
 
   const toggleActive = async (plan: SubscriptionPlan) => {
     try {
-      await adminAction('update_plan', {
-        planId: plan.id,
-        updates: { is_active: !plan.is_active },
-      });
+      await adminService.updatePlan(plan.id, { is_active: !plan.is_active });
       toast.success(plan.is_active ? 'Plan deactivated' : 'Plan activated');
       loadPlans();
     } catch (error) {

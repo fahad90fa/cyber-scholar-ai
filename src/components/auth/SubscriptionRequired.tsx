@@ -14,8 +14,18 @@ export const SubscriptionRequired: React.FC<SubscriptionRequiredProps> = ({
   showPaywall = true,
 }) => {
   const { user, loading: authLoading } = useAuthContext();
-  const { hasActiveSubscription, isLoading: subLoading, subscriptionTier } = useSubscription();
+  const { hasActiveSubscription, isLoading: subLoading, subscriptionTier, refetchSubscription } = useSubscription();
   const [paywallOpen, setPaywallOpen] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await refetchSubscription?.();
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   if (authLoading || subLoading) {
     return (
@@ -41,6 +51,7 @@ export const SubscriptionRequired: React.FC<SubscriptionRequiredProps> = ({
           canClose={true}
           title="Subscription Required"
           message="You need an active subscription to access AI features. Choose a plan to get started."
+          onRefresh={handleRefresh}
         />
       );
     } else {

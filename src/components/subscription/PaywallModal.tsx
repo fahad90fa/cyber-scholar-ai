@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Lock, Zap, Shield, Star } from 'lucide-react';
+import { Lock, Zap, Shield, Star, RefreshCw } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 
@@ -10,6 +10,7 @@ interface PaywallModalProps {
   canClose?: boolean;
   title?: string;
   message?: string;
+  onRefresh?: () => Promise<void>;
 }
 
 export const PaywallModal: React.FC<PaywallModalProps> = ({
@@ -18,8 +19,10 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
   canClose = true,
   title = 'Subscription Required',
   message = 'You need an active subscription to access AI features. Choose a plan to get started.',
+  onRefresh,
 }) => {
   const navigate = useNavigate();
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handlePricingClick = () => {
     navigate('/pricing');
@@ -29,6 +32,16 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
   const handleSubscriptionClick = () => {
     navigate('/subscriptions');
     onClose();
+  };
+  
+  const handleRefresh = async () => {
+    if (!onRefresh) return;
+    setIsRefreshing(true);
+    try {
+      await onRefresh();
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   return (
@@ -76,6 +89,17 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
           </div>
 
           <div className="space-y-2 pt-4">
+            {onRefresh && (
+              <Button
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                variant="outline"
+                className="w-full"
+              >
+                <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+                {isRefreshing ? 'Checking...' : 'Check for Active Subscription'}
+              </Button>
+            )}
             <Button
               onClick={handlePricingClick}
               className="w-full"

@@ -125,6 +125,15 @@ async def submit_payment_proof(payment_id: str, payload: PaymentProofSubmit, tok
     return updated
 
 
+@router.get("/payment-requests/user")
+async def get_user_payment_requests(token: str = Depends(get_token_from_header)):
+    auth_data = await verify_token(token)
+    user_id = auth_data["user_id"]
+    
+    payments = await PaymentQueries.get_user_payment_requests(user_id)
+    return payments
+
+
 @router.get("/payment-requests/{payment_id}")
 async def get_payment_request(payment_id: str, token: str = Depends(get_token_from_header)):
     auth_data = await verify_token(token)
@@ -135,15 +144,6 @@ async def get_payment_request(payment_id: str, token: str = Depends(get_token_fr
         raise HTTPException(status_code=403, detail="Forbidden")
     
     return payment
-
-
-@router.get("/payment-requests/user")
-async def get_user_payment_requests(token: str = Depends(get_token_from_header)):
-    auth_data = await verify_token(token)
-    user_id = auth_data["user_id"]
-    
-    payments = await PaymentQueries.get_user_payment_requests(user_id)
-    return payments
 
 
 @router.get("/tokens/balance")

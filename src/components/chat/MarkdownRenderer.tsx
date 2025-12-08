@@ -11,16 +11,25 @@ interface MarkdownRendererProps {
 
 export function MarkdownRenderer({ content }: MarkdownRendererProps) {
   return (
-    <div className="markdown-content">
+    <div className="markdown-content prose prose-sm dark:prose-invert max-w-none">
       <ReactMarkdown
         components={{
+          h1: ({node, ...props}) => <h1 className="text-lg font-bold mt-3 mb-2 break-words" {...props} />,
+          h2: ({node, ...props}) => <h2 className="text-base font-bold mt-2.5 mb-1.5 break-words" {...props} />,
+          h3: ({node, ...props}) => <h3 className="text-sm font-bold mt-2 mb-1 break-words" {...props} />,
+          p: ({node, ...props}) => <p className="mb-2 break-words" {...props} />,
+          li: ({node, ...props}) => <li className="ml-6 mb-1 break-words" {...props} />,
+          ul: ({node, ...props}) => <ul className="list-disc mb-2" {...props} />,
+          ol: ({node, ...props}) => <ol className="list-decimal mb-2 ml-4" {...props} />,
+          strong: ({node, ...props}) => <strong className="font-semibold text-primary" {...props} />,
+          em: ({node, ...props}) => <em className="italic text-muted-foreground" {...props} />,
           code({ node, className, children, ...props }) {
             const match = /language-(\w+)/.exec(className || "");
             const isInline = !match;
             
             if (isInline) {
               return (
-                <code className="bg-muted px-1.5 py-0.5 rounded text-primary font-mono text-sm" {...props}>
+                <code className="bg-muted px-1.5 py-0.5 rounded text-primary font-mono text-sm break-words" {...props}>
                   {children}
                 </code>
               );

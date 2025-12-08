@@ -14,7 +14,7 @@ const CheckRequestPage = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuthContext();
-  const { hasActiveSubscription } = useSubscription();
+  const { hasActiveSubscription, refetchSubscription } = useSubscription();
   const [paymentRequests, setPaymentRequests] = useState<PaymentRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -22,7 +22,9 @@ const CheckRequestPage = () => {
 
   useEffect(() => {
     loadPaymentRequests();
-    const interval = setInterval(loadPaymentRequests, 5000);
+    const interval = setInterval(() => {
+      loadPaymentRequests();
+    }, 5000);
     return () => clearInterval(interval);
   }, []);
 
@@ -37,7 +39,19 @@ const CheckRequestPage = () => {
         }, 500);
       }
     }
-  }, [hasActiveSubscription, paymentRequests]);
+  }, [hasActiveSubscription, paymentRequests, autoNavigateAttempts, navigate]);
+  
+  useEffect(() => {
+    const checkForConfirmedPayments = async () => {
+      const confirmedPayments = paymentRequests.filter(p => p.status === 'confirmed');
+      if (confirmedPayments.length > 0 && !hasActiveSubscription) {
+        console.log('Confirmed payment detected, refetching subscription...');
+        await refetchSubscription();
+      }
+    };
+    
+    checkForConfirmedPayments();
+  }, [paymentRequests, hasActiveSubscription, refetchSubscription]);
 
   const loadPaymentRequests = async () => {
     try {

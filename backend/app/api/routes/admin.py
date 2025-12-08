@@ -273,12 +273,25 @@ async def confirm_payment(payment_id: str, payload: PaymentConfirmRequest):
         tokens_total=plan["tokens_per_month"]
     )
     
-    await AdminQueries.update_user(payment["user_id"], {
+    profile_update = await AdminQueries.update_user(payment["user_id"], {
         "subscription_tier": plan["slug"],
         "subscription_status": "active",
         "subscription_id": subscription["id"],
         "tokens_total": plan["tokens_per_month"]
     })
+    
+    if not profile_update:
+        print(f"Warning: Failed to update profile for user {payment['user_id']}")
+        try:
+            supabase.table("profiles").update({
+                "subscription_tier": plan["slug"],
+                "subscription_status": "active",
+                "subscription_id": subscription["id"],
+                "tokens_total": plan["tokens_per_month"]
+            }).eq("id", payment["user_id"]).execute()
+            print(f"Fallback profile update succeeded for user {payment['user_id']}")
+        except Exception as e:
+            print(f"Error updating profile: {str(e)}")
     
     return payment
 

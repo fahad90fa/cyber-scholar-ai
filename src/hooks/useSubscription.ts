@@ -46,18 +46,19 @@ interface SubscriptionState {
   loading?: boolean;
 }
 
-export const useSubscription = (): SubscriptionState => {
+export const useSubscription = (): SubscriptionState & { refetchSubscription: () => Promise<any> } => {
   const { user } = useAuthContext();
   const [isInitializing, setIsInitializing] = React.useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const queryClient = useQueryClient();
 
-  const { data: profile, isLoading: profileLoading, error: profileError, refetch } = useQuery({
+  const { data: profile, isLoading: profileLoading, error: profileError, refetch: refetchProfile } = useQuery({
     queryKey: ['profile', user?.id],
     queryFn: async () => {
       if (!user?.id) return null;
       try {
         const response = await apiClient.get('/auth/profile');
+        console.debug('Profile fetched:', response);
         return response as any;
       } catch (error: any) {
         console.debug('Profile fetch error:', error?.message);
@@ -70,25 +71,33 @@ export const useSubscription = (): SubscriptionState => {
     staleTime: 1000 * 60 * 1,
   });
 
-  const { data: subscriptions = [] } = useQuery({
+  const { data: subscriptions = [], isLoading: subscriptionsLoading, refetch: refetchSubs } = useQuery({
     queryKey: ['subscriptions', user?.id],
     queryFn: async () => {
       if (!user?.id) return [];
       try {
-        const { data, error } = await supabase
-          .from('subscriptions')
-          .select('*')
-          .eq('user_id', user.id);
-        if (error) throw error;
-        return (data || []) as Subscription[];
+        const response = await apiClient.get('/subscriptions/current');
+        console.debug('Current subscription fetched:', response);
+        return response ? [response] : [];
       } catch (error: any) {
         console.debug('Subscriptions fetch error:', error?.message);
         return [];
       }
     },
     enabled: !!user?.id,
-    staleTime: 1000 * 60 * 1,
+    staleTime: 1000 * 30,
+    refetchInterval: 1000 * 10,
   });
+  
+  const refetchSubscription = async () => {
+    console.debug('Refetching subscription data...');
+    await Promise.all([
+      refetchProfile(),
+      refetchSubs(),
+      queryClient.invalidateQueries({ queryKey: ['profile', user?.id] }),
+      queryClient.invalidateQueries({ queryKey: ['subscriptions', user?.id] }),
+    ]);
+  };
 
   useEffect(() => {
     const initProfileIfNeeded = async () => {
@@ -97,7 +106,7 @@ export const useSubscription = (): SubscriptionState => {
         try {
           await apiClient.post('/auth/init-profile');
           await new Promise(resolve => setTimeout(resolve, 500));
-          await refetch();
+          await refetchProfile();
         } catch (error: any) {
           const errorMsg = error?.message || String(error);
           if (errorMsg.includes('23503') || errorMsg.includes('foreign key constraint')) {
@@ -113,7 +122,7 @@ export const useSubscription = (): SubscriptionState => {
     if (user?.id) {
       initProfileIfNeeded();
     }
-  }, [user?.id, profile, profileLoading, refetch, isInitializing]);
+  }, [user?.id, profile, profileLoading, refetchProfile, isInitializing]);
 
   useEffect(() => {
     if (!isSubscribed && user?.id) {
@@ -132,7 +141,6 @@ export const useSubscription = (): SubscriptionState => {
               queryClient.invalidateQueries({
                 queryKey: ['profile', user.id],
               });
-              refetch();
             }
           ),
         supabase
@@ -152,7 +160,6 @@ export const useSubscription = (): SubscriptionState => {
               queryClient.invalidateQueries({
                 queryKey: ['subscriptions', user.id],
               });
-              refetch();
             }
           ),
       ];
@@ -171,7 +178,7 @@ export const useSubscription = (): SubscriptionState => {
         });
       };
     }
-  }, [isSubscribed, user?.id, queryClient, refetch]);
+  }, [isSubscribed, user?.id, queryClient]);
 
   const subscription: Subscription | null = subscriptions?.[0] || null;
 
@@ -208,7 +215,7 @@ export const useSubscription = (): SubscriptionState => {
     ? Math.max(0, Math.ceil((new Date(subscription.expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
     : 0;
 
-  const isLoading = profileLoading && !isInitializing;
+  const isLoading = profileLoading || subscriptionsLoading;
   const loading = plansLoading || isLoading;
 
   return {
@@ -222,5 +229,6 @@ export const useSubscription = (): SubscriptionState => {
     daysUntilExpiry,
     plans,
     loading,
+    refetchSubscription,
   };
 };
