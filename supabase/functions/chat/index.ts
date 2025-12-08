@@ -60,6 +60,60 @@ function checkSafety(message: string): { safe: boolean; reason?: string } {
   return { safe: true };
 }
 
+// deno-lint-ignore no-explicit-any
+const checkUserTokens = async (userId: string, supabase: any): Promise<{ hasTokens: boolean; available: number; total: number }> => {
+  try {
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('tokens_total, tokens_used, bonus_tokens')
+      .eq('id', userId)
+      .maybeSingle();
+    
+    if (error) {
+      console.warn('Token check error:', error);
+      return { hasTokens: false, available: 0, total: 0 };
+    }
+    
+    if (!profile) {
+      console.warn('Profile not found for user:', userId);
+      return { hasTokens: false, available: 0, total: 0 };
+    }
+    
+    const totalTokens = (profile.tokens_total || 0) + (profile.bonus_tokens || 0);
+    const usedTokens = profile.tokens_used || 0;
+    const availableTokens = Math.max(0, totalTokens - usedTokens);
+    
+    return { 
+      hasTokens: availableTokens > 0 || totalTokens > 0,
+      available: availableTokens,
+      total: totalTokens
+    };
+  } catch (err) {
+    console.warn('Token verification error:', err);
+    return { hasTokens: false, available: 0, total: 0 };
+  }
+};
+
+// deno-lint-ignore no-explicit-any
+const getUserIdFromAuth = (req: Request): string | null => {
+  const authHeader = req.headers.get('authorization');
+  if (!authHeader?.startsWith('Bearer ')) {
+    return null;
+  }
+
+  const token = authHeader.substring(7);
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    
+    const payload = JSON.parse(atob(parts[1]));
+    return payload.sub || null;
+  } catch (err) {
+    console.error('Token parse error:', err);
+    return null;
+  }
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -71,6 +125,38 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY is not configured');
+    }
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Missing Supabase config');
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    const userId = getUserIdFromAuth(req);
+    if (!userId) {
+      return new Response(JSON.stringify({ 
+        error: 'Authentication required to use chat' 
+      }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Check user tokens (all users get at least 20 free tokens per month)
+    const tokenStatus = await checkUserTokens(userId, supabase);
+    if (!tokenStatus.hasTokens) {
+      return new Response(JSON.stringify({ 
+        error: 'No tokens available',
+        message: 'You\'ve used all your available tokens. Upgrade your plan or wait for your free tokens to reset on the 1st of the month.',
+        availableTokens: tokenStatus.available,
+        totalTokens: tokenStatus.total
+      }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     // Check the last user message for safety

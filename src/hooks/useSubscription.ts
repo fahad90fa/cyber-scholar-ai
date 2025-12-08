@@ -1,87 +1,226 @@
-import { useState, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from './useAuth';
-import type { Profile, Subscription, SubscriptionPlan } from '@/types/subscription.types';
+import { useAuthContext } from '@/context/AuthContext';
+import { apiClient } from '@/services/api';
+import { useEffect, useState } from 'react';
+import React from 'react';
 
-export const useSubscription = () => {
-  const { user } = useAuth();
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [subscription, setSubscription] = useState<Subscription | null>(null);
-  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
-  const [loading, setLoading] = useState(true);
+interface Subscription {
+  id: string;
+  user_id: string;
+  plan_id: string;
+  plan_name: string;
+  billing_cycle: 'monthly' | 'yearly';
+  status: 'active' | 'expired' | 'cancelled';
+  tokens_total: number;
+  tokens_used: number;
+  started_at: string;
+  expires_at: string;
+}
+
+interface SubscriptionPlan {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  monthly_price: number;
+  yearly_price: number;
+  tokens_per_month: number;
+  features: string[];
+  is_active: boolean;
+  is_popular: boolean;
+  is_enterprise?: boolean;
+  sort_order: number;
+}
+
+interface SubscriptionState {
+  subscription: Subscription | null;
+  isLoading: boolean;
+  error: Error | null;
+  hasActiveSubscription: boolean;
+  subscriptionTier: string | null;
+  tokensRemaining: number;
+  isExpired: boolean;
+  daysUntilExpiry: number;
+  plans?: SubscriptionPlan[];
+  loading?: boolean;
+}
+
+export const useSubscription = (): SubscriptionState => {
+  const { user } = useAuthContext();
+  const [isInitializing, setIsInitializing] = React.useState(false);
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const queryClient = useQueryClient();
+
+  const { data: profile, isLoading: profileLoading, error: profileError, refetch } = useQuery({
+    queryKey: ['profile', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      try {
+        const response = await apiClient.get('/auth/profile');
+        return response as any;
+      } catch (error: any) {
+        console.debug('Profile fetch error:', error?.message);
+        return null;
+      }
+    },
+    enabled: !!user?.id,
+    retry: 2,
+    retryDelay: 1000,
+    staleTime: 1000 * 60 * 1,
+  });
+
+  const { data: subscriptions = [] } = useQuery({
+    queryKey: ['subscriptions', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      try {
+        const { data, error } = await supabase
+          .from('subscriptions')
+          .select('*')
+          .eq('user_id', user.id);
+        if (error) throw error;
+        return (data || []) as Subscription[];
+      } catch (error: any) {
+        console.debug('Subscriptions fetch error:', error?.message);
+        return [];
+      }
+    },
+    enabled: !!user?.id,
+    staleTime: 1000 * 60 * 1,
+  });
 
   useEffect(() => {
-    if (user) {
-      fetchProfile();
-      fetchSubscription();
-    } else {
-      setProfile(null);
-      setSubscription(null);
-      setLoading(false);
+    const initProfileIfNeeded = async () => {
+      if (user?.id && profile === null && !profileLoading && !isInitializing) {
+        setIsInitializing(true);
+        try {
+          await apiClient.post('/auth/init-profile');
+          await new Promise(resolve => setTimeout(resolve, 500));
+          await refetch();
+        } catch (error: any) {
+          const errorMsg = error?.message || String(error);
+          if (errorMsg.includes('23503') || errorMsg.includes('foreign key constraint')) {
+            console.debug("Profile sync skipped - user not fully synced to Supabase yet");
+          } else {
+            console.debug("Profile initialization info:", errorMsg);
+          }
+          setIsInitializing(false);
+        }
+      }
+    };
+
+    if (user?.id) {
+      initProfileIfNeeded();
     }
-    fetchPlans();
-  }, [user]);
+  }, [user?.id, profile, profileLoading, refetch, isInitializing]);
 
-  const fetchProfile = async () => {
-    if (!user) return;
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .maybeSingle();
-    setProfile(data);
-  };
+  useEffect(() => {
+    if (!isSubscribed && user?.id) {
+      const channels = [
+        supabase
+          .channel('user-profile-changes')
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'profiles',
+              filter: `id=eq.${user.id}`,
+            },
+            (payload) => {
+              queryClient.invalidateQueries({
+                queryKey: ['profile', user.id],
+              });
+              refetch();
+            }
+          ),
+        supabase
+          .channel('user-subscription-changes')
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'subscriptions',
+              filter: `user_id=eq.${user.id}`,
+            },
+            (payload) => {
+              queryClient.invalidateQueries({
+                queryKey: ['profile', user.id],
+              });
+              queryClient.invalidateQueries({
+                queryKey: ['subscriptions', user.id],
+              });
+              refetch();
+            }
+          ),
+      ];
 
-  const fetchSubscription = async () => {
-    if (!user) return;
-    const { data } = await supabase
-      .from('subscriptions')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('status', 'active')
-      .maybeSingle();
-    // @ts-ignore - billing_cycle type mismatch
-    setSubscription(data);
-    setLoading(false);
-  };
+      channels.forEach(channel => {
+        channel.subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            setIsSubscribed(true);
+          }
+        });
+      });
 
-  const fetchPlans = async () => {
-    const { data } = await supabase
-      .from('subscription_plans')
-      .select('*')
-      .eq('is_active', true)
-      .order('sort_order');
-    // @ts-ignore - features type mismatch
-    setPlans(data || []);
-  };
+      return () => {
+        channels.forEach(channel => {
+          channel.unsubscribe();
+        });
+      };
+    }
+  }, [isSubscribed, user?.id, queryClient, refetch]);
 
-  const hasActiveSubscription = (): boolean => {
-    if (!subscription) return false;
-    if (subscription.status !== 'active') return false;
-    if (subscription.expires_at && new Date(subscription.expires_at) < new Date()) return false;
-    return true;
-  };
+  const subscription: Subscription | null = subscriptions?.[0] || null;
 
-  const getTokensRemaining = (): number => {
-    if (!profile) return 0;
-    return Math.max(0, profile.tokens_total - profile.tokens_used);
-  };
+  const { data: plans = [], isLoading: plansLoading } = useQuery({
+    queryKey: ['subscription-plans'],
+    queryFn: async () => {
+      try {
+        const response = await apiClient.get('/subscription-plans');
+        return response as SubscriptionPlan[];
+      } catch (error: any) {
+        console.debug('Plans fetch error:', error?.message);
+        return [];
+      }
+    },
+    staleTime: 1000 * 60 * 30,
+  });
 
-  const canUseAI = (): boolean => {
-    return hasActiveSubscription() && getTokensRemaining() > 0;
-  };
+  const activeSubscriptionFromDb = subscriptions?.some(
+    (sub) => sub.status === 'active' && new Date(sub.expires_at) > new Date()
+  );
+
+  const hasActiveSubscription = Boolean(
+    (profile?.subscription_tier &&
+    profile?.subscription_status === 'active' &&
+    ['starter', 'pro', 'pro_plus', 'enterprise'].includes(profile.subscription_tier)) ||
+    activeSubscriptionFromDb
+  );
+
+  const tokensRemaining = Math.max(0, (profile?.tokens_total || 0) - (profile?.tokens_used || 0));
+
+  const isExpired = subscription ? new Date(subscription.expires_at) < new Date() : true;
+
+  const daysUntilExpiry = subscription
+    ? Math.max(0, Math.ceil((new Date(subscription.expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    : 0;
+
+  const isLoading = profileLoading && !isInitializing;
+  const loading = plansLoading || isLoading;
 
   return {
-    profile,
-    subscription,
+    subscription: subscription || null,
+    isLoading,
+    error: profileError as Error | null,
+    hasActiveSubscription: hasActiveSubscription && !isExpired,
+    subscriptionTier: profile?.subscription_tier || 'free',
+    tokensRemaining,
+    isExpired,
+    daysUntilExpiry,
     plans,
     loading,
-    hasActiveSubscription,
-    getTokensRemaining,
-    canUseAI,
-    refetch: () => {
-      fetchProfile();
-      fetchSubscription();
-    },
   };
 };

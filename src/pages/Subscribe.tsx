@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useBankSettings } from '@/hooks/useBankSettings';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuthContext } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { formatCurrency } from '@/lib/formatCurrency';
 import { toast } from 'sonner';
@@ -20,7 +20,7 @@ export default function Subscribe() {
   const billingCycle = (searchParams.get('cycle') || 'monthly') as 'monthly' | 'yearly';
   const navigate = useNavigate();
   
-  const { user } = useAuth();
+  const { user } = useAuthContext();
   const { plans } = useSubscription();
   const { bankSettings, loading: bankLoading } = useBankSettings();
   

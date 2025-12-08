@@ -1,9 +1,25 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Settings, Shield, Database, Zap, ExternalLink } from "lucide-react";
+import { Settings, Shield, Database, Zap, ExternalLink, LogOut } from "lucide-react";
+import { useAuthContext } from "@/context/AuthContext";
+import { toast } from "sonner";
 
 const SettingsPage = () => {
+  const { user, logout } = useAuthContext();
+  const navigate = useNavigate();
+  const [showDisclaimer, setShowDisclaimer] = useState(true);
+
+  const handleLogout = () => {
+    if (window.confirm("Are you sure you want to logout?")) {
+      logout();
+      toast.success("Logged out successfully");
+      navigate("/auth");
+    }
+  };
+
   return (
     <MainLayout>
       {/* Header */}
@@ -21,6 +37,33 @@ const SettingsPage = () => {
 
       <div className="flex-1 overflow-y-auto p-6">
         <div className="max-w-2xl mx-auto space-y-6">
+          {/* User Profile */}
+          <div className="bg-card border border-border rounded-lg p-6">
+            <h2 className="font-semibold mb-4">User Profile</h2>
+            <div className="space-y-3">
+              <div>
+                <p className="text-xs text-muted-foreground">Email</p>
+                <p className="text-sm font-mono">{user?.email}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Username</p>
+                <p className="text-sm font-mono">{user?.username}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">User ID</p>
+                <p className="text-sm font-mono text-primary/50">{user?.id}</p>
+              </div>
+              <Button 
+                onClick={handleLogout}
+                className="w-full mt-4 text-destructive hover:text-destructive"
+                variant="outline"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Logout
+              </Button>
+            </div>
+          </div>
+
           {/* Safety Settings */}
           <div className="bg-card border border-border rounded-lg p-6">
             <div className="flex items-center gap-3 mb-4">

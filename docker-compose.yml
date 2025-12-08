@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  python-backend:
+    build:
+      context: ./python-backend
+      dockerfile: Dockerfile
+    container_name: cyber-scholar-api
+    ports:
+      - "8000:8000"
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+      - SUPABASE_JWT_SECRET=${SUPABASE_JWT_SECRET}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - CHROMA_PERSIST_DIR=/app/vector_db
+    volumes:
+      - ./python-backend/vector_db:/app/vector_db
+    depends_on:
+      - postgres
+    networks:
+      - cyber-network
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: cyber-scholar-db
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-cyber_scholar}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - cyber-network
+
+networks:
+  cyber-network:
+    driver: bridge
+
+volumes:
+  postgres_data:

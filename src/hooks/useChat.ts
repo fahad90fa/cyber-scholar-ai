@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
+import { chatAPI } from '@/services/api';
 
 export interface Message {
   id: string;
@@ -17,6 +18,7 @@ interface UseChatOptions {
 export function useChat(moduleContextOrOptions?: string | UseChatOptions) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
 
   const options = typeof moduleContextOrOptions === 'string' 
     ? { module: moduleContextOrOptions } 
@@ -36,94 +38,48 @@ export function useChat(moduleContextOrOptions?: string | UseChatOptions) {
     setIsLoading(true);
 
     try {
-      const apiMessages = [...messages, userMessage].map(m => ({
-        role: m.role,
-        content: m.content,
-      }));
-
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-        },
-        body: JSON.stringify({
-          messages: apiMessages,
-          module: options.module || 'general',
-          retrievedContext: [],
-        }),
-      });
-
-      if (!response.ok) {
-        if (response.status === 429) {
-          toast.error('Rate limit exceeded. Please wait.');
-          return;
-        }
-        throw new Error(`HTTP error: ${response.status}`);
+      const response: any = await chatAPI.sendMessage(content.trim(), sessionId || undefined);
+      
+      if (!sessionId && response.session_id) {
+        setSessionId(response.session_id);
       }
-
-      const contentType = response.headers.get('content-type');
-      if (contentType?.includes('application/json')) {
-        const data = await response.json();
-        setMessages(prev => [...prev, {
-          id: crypto.randomUUID(),
-          role: 'assistant',
-          content: data.content,
-          timestamp: new Date(),
-          isWarning: data.hasWarning,
-        }]);
-        return;
-      }
-
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error('No response body');
-
-      const decoder = new TextDecoder();
-      let assistantContent = '';
-      const assistantMessageId = crypto.randomUUID();
 
       setMessages(prev => [...prev, {
-        id: assistantMessageId,
+        id: response.message?.id || crypto.randomUUID(),
         role: 'assistant',
-        content: '',
+        content: response.ai_response,
         timestamp: new Date(),
+        isWarning: response.ai_response?.includes('EDUCATIONAL DISCLAIMER'),
       }]);
-
-      let buffer = '';
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        let newlineIndex: number;
-        while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
-          let line = buffer.slice(0, newlineIndex);
-          buffer = buffer.slice(newlineIndex + 1);
-          if (!line.startsWith('data: ')) continue;
-          const jsonStr = line.slice(6).trim();
-          if (jsonStr === '[DONE]') break;
-          try {
-            const parsed = JSON.parse(jsonStr);
-            const delta = parsed.choices?.[0]?.delta?.content;
-            if (delta) {
-              assistantContent += delta;
-              setMessages(prev => prev.map(m => 
-                m.id === assistantMessageId ? { ...m, content: assistantContent } : m
-              ));
-            }
-          } catch { break; }
-        }
-      }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Chat error:', error);
-      toast.error('Failed to send message');
+      
+      let errorMessage = error.message || 'Failed to send message';
+      
+      if (error.status === 403) {
+        if (error.message?.includes('No tokens available')) {
+          errorMessage = 'You\'ve used all your available tokens. Upgrade your plan or wait for your free tokens to reset on the 1st of the month.';
+        } else if (error.message?.includes('subscription')) {
+          errorMessage = 'An error occurred. Please try again or contact support.';
+        }
+        toast.error(errorMessage);
+      } else if (error.status === 401) {
+        errorMessage = 'Please log in to use chat functionality.';
+        toast.error(errorMessage);
+      } else {
+        toast.error(errorMessage);
+      }
+      
       setMessages(prev => prev.filter(m => m.id !== userMessage.id));
     } finally {
       setIsLoading(false);
     }
-  }, [messages, options.module]);
+  }, [sessionId]);
 
-  const clearMessages = useCallback(() => setMessages([]), []);
+  const clearMessages = useCallback(() => {
+    setMessages([]);
+    setSessionId(null);
+  }, []);
 
-  return { messages, isLoading, sendMessage, clearMessages };
+  return { messages, isLoading, sendMessage, clearMessages, sessionId };
 }

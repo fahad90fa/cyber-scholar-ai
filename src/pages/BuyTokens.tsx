@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuthContext } from '@/context/AuthContext';
 import { useBankSettings } from '@/hooks/useBankSettings';
 import { formatCurrency } from '@/lib/formatCurrency';
 import { toast } from 'sonner';
@@ -15,7 +15,7 @@ import type { TokenPack } from '@/types/subscription.types';
 
 export default function BuyTokens() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user } = useAuthContext();
   const { bankSettings } = useBankSettings();
   
   const [packs, setPacks] = useState<TokenPack[]>([]);
