@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     
     GOOGLE_API_KEY: str
-    GEMINI_MODEL: str = "gemini-2.5-flash"
+    GEMINI_MODEL: str = "gemini-2.5-flash-lite"
     
     DATABASE_URL: str = "sqlite:///./cyber_scholar.db"
     CHROMA_PERSIST_DIR: str = "./chroma_data"
