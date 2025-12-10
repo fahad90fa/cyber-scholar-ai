@@ -1,16 +1,32 @@
-import sys
-import os
-from pathlib import Path
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+import json
 
-# Setup path
-project_root = Path(__file__).parent.parent
-backend_dir = project_root / "backend"
-sys.path.insert(0, str(backend_dir))
-os.chdir(str(backend_dir))
+# Create a simple FastAPI app for testing
+app = FastAPI()
 
-# Import and expose the FastAPI app for Vercel ASGI
-from app.main import app
+# Add CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-# Vercel expects either:
-# 1. An ASGI app directly (like FastAPI)
-# 2. Or export it as 'app' or 'asgi_app'
+@app.get("/")
+async def root():
+    return {"message": "Welcome to CyberScholar AI Backend"}
+
+@app.get("/health")
+async def health():
+    return {"status": "healthy"}
+
+@app.get("/api/v1/health")
+async def health_v1():
+    return {"status": "healthy", "version": "v1"}
+
+# Fallback handler for Vercel
+async def handle(request):
+    return JSONResponse({"error": "Not implemented yet"}, status_code=501)
