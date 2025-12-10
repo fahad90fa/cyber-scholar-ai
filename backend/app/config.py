@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     SUPABASE_JWT_SECRET: str = ""
     ADMIN_PASSWORD: str = ""
     
-    ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:5173,http://localhost:8080"
+    ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:5173,http://localhost:8080,https://cyber-scholar-ai.vercel.app"
     ENVIRONMENT: str = "development"
     
     RATE_LIMIT_ENABLED: bool = True

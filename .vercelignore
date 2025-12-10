@@ -1,0 +1,18 @@
+# Ignore unnecessary files for Vercel deployment
+.git
+.gitignore
+*.md
+node_modules
+.venv
+venv
+backend/venv
+backend/chroma_data
+backend/uploads
+backend/cyber_scholar.db
+.env.local
+.env.*.local
+dist
+.DS_Store
+__pycache__
+*.pyc
+.pytest_cache
