@@ -6,6 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Settings, Shield, Database, Zap, ExternalLink, LogOut } from "lucide-react";
 import { useAuthContext } from "@/context/AuthContext";
 import { toast } from "sonner";
+import { ChatSecuritySettings } from "@/components/settings/ChatSecuritySettings";
 
 const SettingsPage = () => {
   const { user, logout } = useAuthContext();
@@ -63,6 +64,9 @@ const SettingsPage = () => {
               </Button>
             </div>
           </div>
+
+          {/* Chat Security */}
+          <ChatSecuritySettings />
 
           {/* Safety Settings */}
           <div className="bg-card border border-border rounded-lg p-6">

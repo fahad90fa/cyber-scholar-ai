@@ -57,7 +57,28 @@ class TrainingDocument(Base):
     file_type = Column(String, nullable=False)
     content_preview = Column(Text)
     chunk_count = Column(Integer, default=0)
+    checksum_sha256 = Column(String)
+    file_size = Column(Integer)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     user = relationship("User", back_populates="training_documents")
+
+
+class ChatSecurity(Base):
+    __tablename__ = "chat_security"
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, unique=True)
+    chat_security_enabled = Column(Boolean, default=False)
+    chat_password_hash = Column(String)
+    chat_password_salt = Column(String)
+    chat_security_hint = Column(String)
+    chat_password_set_at = Column(DateTime)
+    failed_chat_password_attempts = Column(Integer, default=0)
+    chat_locked_until = Column(DateTime)
+    last_chat_access = Column(DateTime)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    user = relationship("User")

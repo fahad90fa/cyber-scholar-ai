@@ -35,8 +35,8 @@ export function ChatInput({ onSend, isLoading, placeholder }: ChatInputProps) {
   };
 
   return (
-    <div className="p-4 border-t border-border bg-card/50 backdrop-blur-sm">
-      <div className="flex items-end gap-3 max-w-4xl mx-auto">
+    <div className="p-4 border-t border-border bg-card/50 backdrop-blur-sm overflow-hidden">
+      <div className="flex items-end gap-3 max-w-4xl mx-auto w-full overflow-hidden">
         <div className="flex-1 relative">
           {/* Terminal prompt styling */}
           <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2 pointer-events-none">
@@ -52,11 +52,12 @@ export function ChatInput({ onSend, isLoading, placeholder }: ChatInputProps) {
             disabled={isLoading}
             rows={1}
             className={cn(
-              "w-full resize-none rounded-lg border border-border bg-background pl-10 pr-4 py-3",
+              "w-full max-w-full resize-none rounded-lg border border-border bg-background pl-10 pr-4 py-3",
               "text-sm font-mono placeholder:text-muted-foreground",
               "focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary",
               "transition-all duration-200",
-              "disabled:opacity-50 disabled:cursor-not-allowed"
+              "disabled:opacity-50 disabled:cursor-not-allowed",
+              "overflow-hidden whitespace-pre-wrap break-words"
             )}
           />
           

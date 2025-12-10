@@ -216,11 +216,13 @@ serve(async (req) => {
             .from("profiles")
             .select("tokens_total, tokens_used, bonus_tokens")
             .eq("id", userId)
-            .single();
+            .maybeSingle();
 
           if (getError) throw getError;
+          
+          if (!profile) throw new Error("User profile not found");
 
-          const newTokensTotal = (profile?.tokens_total || 0) + amount;
+          const newTokensTotal = (profile.tokens_total || 0) + amount;
 
           // Update profile
           const { data: updatedUser, error: updateError } = await supabase
@@ -252,11 +254,13 @@ serve(async (req) => {
             .from("profiles")
             .select("tokens_total, tokens_used, bonus_tokens")
             .eq("id", userId)
-            .single();
+            .maybeSingle();
 
           if (getError) throw getError;
+          
+          if (!profile) throw new Error("User profile not found");
 
-          const newTokensTotal = Math.max(0, (profile?.tokens_total || 0) - amount);
+          const newTokensTotal = Math.max(0, (profile.tokens_total || 0) - amount);
 
           // Update profile
           const { data: updatedUser, error: updateError } = await supabase

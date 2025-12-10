@@ -79,13 +79,37 @@ class TrainingDocumentResponse(BaseModel):
     source_name: str
     file_type: str
     chunk_count: int
+    checksum_sha256: Optional[str] = None
+    file_size: Optional[int] = None
     created_at: datetime
     
     class Config:
         from_attributes = True
 
 
+class IntegrityVerificationResponse(BaseModel):
+    verified: bool
+    status: str
+    message: str
+    checksum: Optional[str] = None
+
+
 class RetrievalTestResponse(BaseModel):
     query: str
     results: List[dict]
     count: int
+
+
+class TrainingChatRequest(BaseModel):
+    message: str
+
+
+class TrainingChatSource(BaseModel):
+    filename: str
+    source_name: str
+
+
+class TrainingChatResponse(BaseModel):
+    message_id: str
+    ai_response: str
+    sources: List[TrainingChatSource] = []

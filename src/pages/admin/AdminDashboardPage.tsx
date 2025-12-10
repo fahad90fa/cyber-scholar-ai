@@ -10,6 +10,7 @@ import {
   LogOut,
   BarChart3,
   Zap,
+  Globe,
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
@@ -211,7 +212,7 @@ const AdminDashboardPage = () => {
             <h2 className="text-xl font-bold text-foreground mb-6">
               Quick Actions
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <Button
                 onClick={() => navigate("/admin/payments?status=pending")}
                 variant="outline"
@@ -227,6 +228,14 @@ const AdminDashboardPage = () => {
               >
                 <Users className="w-4 h-4" />
                 Manage Users
+              </Button>
+              <Button
+                onClick={() => navigate("/admin/info")}
+                variant="outline"
+                className="gap-2"
+              >
+                <Globe className="w-4 h-4" />
+                Device & Network
               </Button>
               <Button
                 onClick={() => navigate("/admin/subscriptions")}

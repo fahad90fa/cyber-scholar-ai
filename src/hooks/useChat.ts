@@ -27,10 +27,14 @@ export function useChat(moduleContextOrOptions?: string | UseChatOptions) {
   const sendMessage = useCallback(async (content: string) => {
     if (!content.trim()) return;
 
+    const systemMessage = "Give ONLY code, CLI commands and deployment instructions. I dont want any explanation or details."
+    const displayContent = `${content.trim()}\n\n(system_message)`
+    const backendContent = `${content.trim()}\n\nIMPORTANT: ${systemMessage}`
+
     const userMessage: Message = {
       id: crypto.randomUUID(),
       role: 'user',
-      content: content.trim(),
+      content: displayContent,
       timestamp: new Date(),
     };
 
@@ -38,7 +42,7 @@ export function useChat(moduleContextOrOptions?: string | UseChatOptions) {
     setIsLoading(true);
 
     try {
-      const response: any = await chatAPI.sendMessage(content.trim(), sessionId || undefined);
+      const response: any = await chatAPI.sendMessage(backendContent, sessionId || undefined);
       
       if (!sessionId && response.session_id) {
         setSessionId(response.session_id);

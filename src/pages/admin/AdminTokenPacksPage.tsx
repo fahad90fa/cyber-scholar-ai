@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAdminTokenPacksRealtime } from "@/hooks/useAdminTokenPacksRealtime";
+import { adminService } from "@/services/adminService";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -16,13 +17,25 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import AdminLayout from "@/components/admin/AdminLayout";
-import { Plus, Edit2, Trash2 } from "lucide-react";
+import { Plus, Edit2, Trash2, Check, X } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const AdminTokenPacksPage = () => {
-  const { tokenPacks, purchaseRequests, isLoading, isSubscribed } = useAdminTokenPacksRealtime();
+  const { tokenPacks, purchaseRequests, isLoading, isSubscribed, refetch } = useAdminTokenPacksRealtime();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingPack, setEditingPack] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [rejectingRequest, setRejectingRequest] = useState<any>(null);
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [processingRequestId, setProcessingRequestId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -81,7 +94,7 @@ const AdminTokenPacksPage = () => {
       }
 
       setIsCreateDialogOpen(false);
-      loadTokenPacks();
+      refetch();
     } catch (error: any) {
       toast.error(error.message || "Failed to save token pack");
     } finally {
@@ -96,9 +109,42 @@ const AdminTokenPacksPage = () => {
     try {
       await adminService.deleteTokenPack(packId);
       toast.success("Token pack deleted successfully");
-      loadTokenPacks();
+      refetch();
     } catch (error: any) {
       toast.error(error.message || "Failed to delete token pack");
+    }
+  };
+
+  const handleApproveRequest = async (requestId: string) => {
+    try {
+      setProcessingRequestId(requestId);
+      await adminService.approveTokenPackRequest(requestId);
+      toast.success("Request approved");
+      refetch();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to approve request");
+    } finally {
+      setProcessingRequestId(null);
+    }
+  };
+
+  const handleRejectRequest = async () => {
+    if (!rejectingRequest || !rejectionReason.trim()) {
+      toast.error("Please provide a rejection reason");
+      return;
+    }
+
+    try {
+      setProcessingRequestId(rejectingRequest.id);
+      await adminService.rejectTokenPackRequest(rejectingRequest.id, rejectionReason);
+      toast.success("Request rejected");
+      setRejectingRequest(null);
+      setRejectionReason("");
+      refetch();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to reject request");
+    } finally {
+      setProcessingRequestId(null);
     }
   };
 
@@ -328,15 +374,126 @@ const AdminTokenPacksPage = () => {
 
           {/* Purchase Requests Tab */}
           <TabsContent value="requests">
-            <Card className="p-6 bg-card border-primary/10">
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">
-                  No purchase requests at the moment
-                </p>
+            {purchaseRequests.length > 0 ? (
+              <div className="space-y-4">
+                {purchaseRequests.map((request: any) => (
+                  <motion.div
+                    key={request.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                  >
+                    <Card className="p-6 bg-card border-primary/10">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                        <div>
+                          <p className="text-sm text-muted-foreground">User</p>
+                          <p className="font-mono text-sm">{request.user_id?.slice(0, 8)}...</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Tokens</p>
+                          <p className="font-bold">{request.tokens?.toLocaleString()}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Amount</p>
+                          <p className="font-bold">${(request.amount / 100).toFixed(2)}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Status</p>
+                          <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                            request.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
+                            request.status === 'confirmed' ? 'bg-green-500/20 text-green-400' :
+                            'bg-red-500/20 text-red-400'
+                          }`}>
+                            {request.status}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-xs text-muted-foreground space-y-1 mb-4">
+                        <p>Reference: {request.transaction_reference || 'N/A'}</p>
+                        <p>Date: {request.payment_date || 'N/A'}</p>
+                        <p>Submitted: {request.created_at ? new Date(request.created_at).toLocaleString() : 'N/A'}</p>
+                      </div>
+                      {request.status === 'pending' && (
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() => handleApproveRequest(request.id)}
+                            disabled={processingRequestId === request.id}
+                            className="flex-1 bg-green-600 hover:bg-green-700 gap-1"
+                          >
+                            <Check className="w-3 h-3" />
+                            {processingRequestId === request.id ? 'Processing...' : 'Approve'}
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => setRejectingRequest(request)}
+                            disabled={processingRequestId === request.id}
+                            variant="destructive"
+                            className="flex-1 gap-1"
+                          >
+                            <X className="w-3 h-3" />
+                            Reject
+                          </Button>
+                        </div>
+                      )}
+                      {request.status === 'confirmed' && (
+                        <div className="text-xs bg-green-500/10 text-green-400 px-2 py-1 rounded text-center">
+                          Approved on {request.confirmed_at ? new Date(request.confirmed_at).toLocaleDateString() : 'N/A'}
+                        </div>
+                      )}
+                      {request.status === 'rejected' && (
+                        <div className="text-xs bg-red-500/10 text-red-400 px-2 py-1 rounded">
+                          <p className="font-semibold mb-1">Rejected</p>
+                          <p>{request.rejection_reason || 'No reason provided'}</p>
+                        </div>
+                      )}
+                    </Card>
+                  </motion.div>
+                ))}
               </div>
-            </Card>
+            ) : (
+              <Card className="p-6 bg-card border-primary/10">
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">
+                    No purchase requests at the moment
+                  </p>
+                </div>
+              </Card>
+            )}
           </TabsContent>
         </Tabs>
+
+        <AlertDialog open={!!rejectingRequest} onOpenChange={(open) => !open && setRejectingRequest(null)}>
+          <AlertDialogContent className="bg-card border-primary/10">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Reject Token Pack Request</AlertDialogTitle>
+              <AlertDialogDescription>
+                Provide a reason for rejecting this request. The user will be notified.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm text-foreground">Rejection Reason</label>
+                <textarea
+                  value={rejectionReason}
+                  onChange={(e) => setRejectionReason(e.target.value)}
+                  placeholder="Enter the reason for rejection..."
+                  className="w-full mt-1 p-2 bg-background border border-primary/10 rounded text-foreground placeholder-muted-foreground text-sm"
+                  rows={4}
+                />
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleRejectRequest}
+                disabled={processingRequestId === rejectingRequest?.id || !rejectionReason.trim()}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                {processingRequestId === rejectingRequest?.id ? 'Rejecting...' : 'Reject'}
+              </AlertDialogAction>
+            </div>
+          </AlertDialogContent>
+        </AlertDialog>
       </motion.div>
     </AdminLayout>
   );

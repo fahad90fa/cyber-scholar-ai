@@ -7,25 +7,40 @@ from app.models import User
 from app import schemas, security
 from app.config import get_settings
 from app.core.supabase_client import supabase
+from app.validators import (
+    EmailValidator, UsernameValidator, PasswordValidator, 
+    InputSanitizer, ValidatedUserCreate
+)
+import logging
 
 settings = get_settings()
 router = APIRouter(prefix="/auth", tags=["auth"])
+logger = logging.getLogger(__name__)
 
 
 @router.post("/register", response_model=schemas.TokenResponse)
-async def register(user_data: schemas.UserCreate, db: Session = Depends(get_db)):
-    existing_user = db.query(User).filter(User.email == user_data.email).first()
-    if existing_user:
+async def register(user_data: ValidatedUserCreate, db: Session = Depends(get_db)):
+    if not EmailValidator.validate_email(user_data.email):
+        logger.warning(f"Invalid email format attempted: {user_data.email}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered"
+            detail="Invalid email format"
+        )
+    
+    existing_user = db.query(User).filter(User.email == user_data.email.lower()).first()
+    if existing_user:
+        logger.warning(f"Duplicate registration attempt for email: {user_data.email}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This account already exists"
         )
     
     existing_username = db.query(User).filter(User.username == user_data.username).first()
     if existing_username:
+        logger.warning(f"Duplicate username attempt: {user_data.username}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username already taken"
+            detail="This account already exists"
         )
     
     hashed_password = security.get_password_hash(user_data.password)
@@ -61,12 +76,20 @@ async def register(user_data: schemas.UserCreate, db: Session = Depends(get_db))
 
 @router.post("/login", response_model=schemas.TokenResponse)
 async def login(credentials: schemas.UserLogin, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == credentials.email).first()
-    
-    if not user or not security.verify_password(credentials.password, user.hashed_password):
+    if not EmailValidator.validate_email(credentials.email):
+        logger.warning(f"Login attempt with invalid email format: {credentials.email}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password"
+            detail="Invalid credentials"
+        )
+    
+    user = db.query(User).filter(User.email == credentials.email.lower()).first()
+    
+    if not user or not security.verify_password(credentials.password, user.hashed_password):
+        logger.warning(f"Failed login attempt for email: {credentials.email}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials"
         )
     
     if not user.is_active:
@@ -92,60 +115,6 @@ async def login(credentials: schemas.UserLogin, db: Session = Depends(get_db)):
             "created_at": user.created_at
         }
     }
-
-
-@router.post("/init-profile")
-async def init_profile(current_user: User = Depends(security.get_current_user)):
-    try:
-        from_date = datetime.now()
-        to_date = from_date + td(days=30)
-        
-        try:
-            profile_response = supabase.table('profiles').insert({
-                'id': str(current_user.id),
-                'email': current_user.email,
-                'subscription_tier': 'free',
-                'subscription_status': 'active',
-                'tokens_total': 20,
-                'tokens_used': 0,
-                'bonus_tokens': 0,
-                'created_at': from_date.isoformat(),
-                'updated_at': from_date.isoformat()
-            }).execute()
-        except Exception as profile_error:
-            error_msg = str(profile_error)
-            if 'duplicate' in error_msg.lower() or 'already exists' in error_msg.lower() or '23505' in error_msg:
-                return {"success": True, "message": "Profile already exists"}
-            raise
-        
-        try:
-            subscription_response = supabase.table('subscriptions').insert({
-                'user_id': str(current_user.id),
-                'plan_name': 'Free Tier',
-                'billing_cycle': 'monthly',
-                'status': 'active',
-                'started_at': from_date.isoformat(),
-                'expires_at': to_date.isoformat(),
-                'tokens_total': 20,
-                'tokens_used': 0,
-                'price_paid': 0,
-                'created_at': from_date.isoformat()
-            }).execute()
-        except Exception as subscription_error:
-            error_msg = str(subscription_error)
-            if 'duplicate' in error_msg.lower() or 'already exists' in error_msg.lower() or '23505' in error_msg:
-                return {"success": True, "message": "Subscription already exists"}
-            raise
-        
-        return {"success": True, "message": "Profile initialized"}
-    except Exception as e:
-        error_msg = str(e)
-        if 'duplicate' in error_msg.lower() or 'already exists' in error_msg.lower() or '23503' in error_msg or '23505' in error_msg:
-            return {"success": True, "message": "Profile already exists"}
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to initialize profile: {error_msg}"
-        )
 
 
 @router.get("/me", response_model=schemas.UserResponse)

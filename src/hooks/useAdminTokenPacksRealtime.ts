@@ -13,19 +13,24 @@ export const useAdminTokenPacksRealtime = () => {
       const tokenPacksResponse = await supabase
         .from('token_packs')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('sort_order', { ascending: true });
 
       if (tokenPacksResponse.error) {
         throw new Error(tokenPacksResponse.error.message);
       }
 
-      const purchaseRequests = await callAdminFunction('admin-token-packs').then(
-        (data: any) => data?.purchase_requests || []
-      ).catch(() => []);
+      const purchaseRequestsResponse = await supabase
+        .from('token_pack_requests')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (purchaseRequestsResponse.error) {
+        throw new Error(purchaseRequestsResponse.error.message);
+      }
 
       return {
         token_packs: tokenPacksResponse.data || [],
-        purchase_requests: purchaseRequests,
+        purchase_requests: purchaseRequestsResponse.data || [],
       };
     },
     staleTime: 5000,
@@ -60,7 +65,7 @@ export const useAdminTokenPacksRealtime = () => {
             {
               event: '*',
               schema: 'public',
-              table: 'token_pack_purchase_requests',
+              table: 'token_pack_requests',
             },
             (payload) => {
               queryClient.invalidateQueries({

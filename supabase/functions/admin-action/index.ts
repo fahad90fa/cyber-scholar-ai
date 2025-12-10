@@ -68,7 +68,7 @@ serve(async (req) => {
       case 'get_user': {
         const { userId } = data;
         const [profile, subscription, payments, transactions] = await Promise.all([
-          supabase.from('profiles').select('*').eq('id', userId).single(),
+          supabase.from('profiles').select('*').eq('id', userId).maybeSingle(),
           supabase.from('subscriptions').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
           supabase.from('payment_requests').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
           supabase.from('token_transactions').select('*').eq('user_id', userId).order('created_at', { ascending: false }),

@@ -10,6 +10,7 @@ import {
   Shield,
   Menu,
   X,
+  Globe,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -22,6 +23,7 @@ const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const menuItems = [
     { icon: LayoutDashboard, label: "Dashboard", href: "/admin" },
     { icon: Users, label: "Users", href: "/admin/users" },
+    { icon: Globe, label: "Device & Network", href: "/admin/info" },
     { icon: CreditCard, label: "Subscriptions", href: "/admin/subscriptions" },
     { icon: Zap, label: "Payments", href: "/admin/payments" },
     { icon: Shield, label: "Plans", href: "/admin/plans" },

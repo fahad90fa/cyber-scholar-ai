@@ -43,8 +43,10 @@ class SubscriptionQueries:
     @staticmethod
     async def get_user_subscription(user_id: str):
         try:
-            result = supabase.table("subscriptions").select("*").eq("user_id", user_id).eq("status", "active").execute()
-            return result.data[0] if result.data else None
+            result = supabase.table("subscriptions").select("*").eq("user_id", user_id).eq("status", "active").order("created_at", desc=True).limit(1).execute()
+            if result.data:
+                return result.data[0]
+            return None
         except Exception:
             return None
 

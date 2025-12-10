@@ -3,23 +3,75 @@ import { useNavigate } from "react-router-dom";
 import { subscriptionService, Subscription } from "@/services/subscriptionService";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Zap, Calendar, CreditCard } from "lucide-react";
+import { Zap, Calendar, CreditCard, RotateCw } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
+import { useAuthContext } from "@/context/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 const SubscriptionDashboardPage = () => {
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [tokens, setTokens] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const navigate = useNavigate();
+  const { user } = useAuthContext();
 
   useEffect(() => {
     loadSubscriptionData();
   }, []);
 
-  const loadSubscriptionData = async () => {
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const subChannel = supabase
+      .channel(`subscriptions-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'subscriptions',
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          console.log('Subscription changed, reloading...');
+          loadSubscriptionData();
+        }
+      )
+      .subscribe((status) => {
+        console.log('Subscription channel status:', status);
+      });
+
+    const profileChannel = supabase
+      .channel(`profiles-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${user.id}`,
+        },
+        () => {
+          console.log('Profile changed, reloading...');
+          loadSubscriptionData();
+        }
+      )
+      .subscribe((status) => {
+        console.log('Profile channel status:', status);
+      });
+
+    return () => {
+      supabase.removeChannel(subChannel);
+      supabase.removeChannel(profileChannel);
+    };
+  }, [user?.id]);
+
+  const loadSubscriptionData = async (isRefresh = false) => {
     try {
-      setLoading(true);
+      if (!isRefresh) setLoading(true);
+      if (isRefresh) setRefreshing(true);
       const [subData, tokenData] = await Promise.all([
         subscriptionService.getUserSubscription().catch((error) => {
           console.error("Failed to load subscription:", error);
@@ -32,11 +84,13 @@ const SubscriptionDashboardPage = () => {
       ]);
       setSubscription(subData);
       setTokens(tokenData);
+      if (isRefresh) toast.success("Subscription data updated");
     } catch (error: any) {
       console.error("Error loading subscription data:", error);
-      toast.error("Failed to load subscription data");
+      if (isRefresh) toast.error("Failed to refresh subscription data");
     } finally {
-      setLoading(false);
+      if (!isRefresh) setLoading(false);
+      if (isRefresh) setRefreshing(false);
     }
   };
 
@@ -73,9 +127,21 @@ const SubscriptionDashboardPage = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
         >
-          <h1 className="text-3xl font-bold text-foreground mb-8">
-            Your Subscription
-          </h1>
+          <div className="flex items-center justify-between mb-8">
+            <h1 className="text-3xl font-bold text-foreground">
+              Your Subscription
+            </h1>
+            <Button
+              onClick={() => loadSubscriptionData(true)}
+              variant="outline"
+              size="sm"
+              disabled={refreshing}
+              className="gap-2"
+            >
+              <RotateCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+              {refreshing ? 'Refreshing...' : 'Refresh'}
+            </Button>
+          </div>
 
           {subscription ? (
             <div className="space-y-6">

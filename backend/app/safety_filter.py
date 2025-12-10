@@ -3,63 +3,31 @@ from typing import Tuple
 
 
 class SafetyFilter:
-    ILLEGAL_KEYWORDS = [
-        r"ransomware.*creation",
-        r"botnet.*creation",
-        r"malware.*distribut",
-        r"zero-day.*sell",
-        r"steal.*credit.*card",
-        r"steal.*password",
-        r"ddos.*attack.*launch",
-        r"phishing.*campaign",
-        r"compromise.*government",
-        r"hack.*bank",
-        r"decrypt.*without.*permission",
-        r"crack.*encryption.*for.*crime",
-    ]
 
     ALLOWED_CONTEXT = [
-        "educational",
-        "learning",
-        "lab",
-        "practice",
-        "legitimate",
-        "authorized",
-        "permitted",
-        "legal",
-        "defensive",
-        "security research",
-        "ctf",
-        "hackathon",
-        "authorized penetration testing",
-        "authorized security assessment",
+        r"\b(educational|learning|lab|practice|legitimate|authorized|permitted|legal)\b",
+        r"\b(ethical|hacking|penetration|security|testing)\b",
+        r"\b(research|vulnerability|exploit|payload)\b",
+        r"\b(ctf|capture|flag|hackathon|bug\s+bounty)\b",
+        r"\b(sandbox|isolated|test|education|learning)\b",
+        r"\b(hackthebox|tryhackme|htb|thm|picoctf)\b",
+        r"\b(oscp|ceh|security\+|cissp|course)\b",
+        r"\b(nmap|burp|metasploit|wireshark|tcpdump)\b",
+        r"\b(reverse|engineering|malware|binary)\b",
+        r"\b(cryptography|encryption|decryption|hash)\b",
+        r"\b(network|application|web|defense|hardening)\b",
+        r"\b(reconnaissance|enumeration|scanning|footprint)\b",
+        r"\b(sql|injection|xss|csrf|overflow)\b",
+        r"\b(monitor|incident|response|analysis)\b",
+        r"\b(python|bash|shell|powershell|script)\b",
+        r"\b(kali|linux|tool|command|code)\b",
     ]
 
-    REDIRECT_SUGGESTIONS = {
-        "ransomware": "If you want to learn about ransomware defense, I can help you understand how to protect systems and detect ransomware attacks.",
-        "malware": "If you're interested in malware analysis for defensive purposes, I can explain how to analyze and mitigate malware threats.",
-        "ddos": "If you want to learn about DDoS mitigation and defense strategies, I can explain how to protect services from DDoS attacks.",
-        "phishing": "If you want to learn about phishing defense, I can help you understand how to identify and prevent phishing attacks.",
-    }
-
     @classmethod
-    def contains_illegal_intent(cls, text: str) -> Tuple[bool, str]:
-        """Check if text contains illegal intent"""
-        text_lower = text.lower()
-        
-        for pattern in cls.ILLEGAL_KEYWORDS:
-            if re.search(pattern, text_lower, re.IGNORECASE):
-                return True, pattern
-        
-        return False, ""
-
-    @classmethod
-    def has_educational_intent(cls, text: str) -> bool:
-        """Check if text has educational intent"""
-        text_lower = text.lower()
-        
-        for keyword in cls.ALLOWED_CONTEXT:
-            if keyword in text_lower:
+    def has_allowed_context(cls, text: str) -> bool:
+        """Check if text contains allowed cybersecurity education keywords"""
+        for pattern in cls.ALLOWED_CONTEXT:
+            if re.search(pattern, text, re.IGNORECASE):
                 return True
         
         return False
@@ -70,21 +38,10 @@ class SafetyFilter:
         Filter query for safety
         Returns: (is_safe, message_or_redirect)
         """
-        is_illegal, pattern = cls.contains_illegal_intent(query)
+        if not cls.has_allowed_context(query):
+            return False, "Your message does not contain recognized cybersecurity education keywords. Please ask about security topics like penetration testing, vulnerabilities, tools, or educational platforms."
         
-        if not is_illegal:
-            return True, query
-        
-        has_education = cls.has_educational_intent(query)
-        
-        if has_education:
-            return True, query
-        
-        for keyword, suggestion in cls.REDIRECT_SUGGESTIONS.items():
-            if keyword.lower() in query.lower():
-                return False, suggestion
-        
-        return False, "I cannot assist with requests that could facilitate illegal or unethical activities. Please rephrase your question with a focus on defensive security, learning, or authorized security testing."
+        return True, query
 
     @classmethod
     def add_educational_disclaimer(cls, response: str, topic: str) -> str:

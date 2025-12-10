@@ -1,0 +1,103 @@
+=============================================================================
+APPLYING ONBOARDING 406 FIX - STEP BY STEP
+=============================================================================
+
+STEP 1: Copy SQL Fix to Supabase
+────────────────────────────────
+1. Go to: https://app.supabase.com/
+2. Select your project
+3. Go to: SQL Editor (left menu)
+4. Click: "New Query"
+5. Copy this entire SQL block:
+
+---COPY BELOW THIS LINE---
+
+ALTER TABLE public.profiles
+ADD COLUMN IF NOT EXISTS onboarding_completed BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS onboarding_completed_at TIMESTAMPTZ;
+
+DROP POLICY IF EXISTS "Users can read own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Authenticated users can read own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Authenticated users can update own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Authenticated users can insert own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Service role can insert profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Service role can update profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Service role can read all profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
+
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "profiles_select_own"
+  ON public.profiles
+  FOR SELECT
+  TO authenticated
+  USING (auth.uid() = id);
+
+CREATE POLICY "profiles_update_own"
+  ON public.profiles
+  FOR UPDATE
+  TO authenticated
+  USING (auth.uid() = id)
+  WITH CHECK (auth.uid() = id);
+
+CREATE POLICY "profiles_insert_own"
+  ON public.profiles
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (auth.uid() = id);
+
+CREATE POLICY "profiles_service_role"
+  ON public.profiles
+  FOR ALL
+  TO service_role
+  USING (true)
+  WITH CHECK (true);
+
+CREATE INDEX IF NOT EXISTS idx_profiles_id ON public.profiles(id);
+CREATE INDEX IF NOT EXISTS idx_profiles_onboarding_completed ON public.profiles(onboarding_completed);
+CREATE INDEX IF NOT EXISTS idx_profiles_created_at ON public.profiles(created_at);
+
+---COPY ABOVE THIS LINE---
+
+6. Click: "Run" button
+7. Wait for: "Success" message
+
+
+STEP 2: Verify in Supabase
+──────────────────────────
+Run this query to verify:
+
+SELECT id, onboarding_completed FROM public.profiles LIMIT 1;
+
+Should return: At least one row with onboarding_completed value
+
+
+STEP 3: Clear Browser Cache
+────────────────────────────
+- Chrome/Firefox: Ctrl+Shift+Delete
+- Safari: Cmd+Shift+Delete
+
+Click "All time" → Select all → Clear
+
+
+STEP 4: Hard Refresh App
+─────────────────────────
+- Chrome/Firefox: Ctrl+F5
+- Safari: Cmd+Shift+R
+
+
+STEP 5: Test
+────────────
+1. Open browser console (F12)
+2. Look for logs starting with "[Onboarding]"
+3. Should see:
+   - [Onboarding] Fetching status for user: xxx
+   - [Onboarding] Status fetched: false
+   - [Onboarding] Setting up realtime subscription
+
+4. No 406 errors should appear
+
+Done! The onboarding system should work now.
+=============================================================================

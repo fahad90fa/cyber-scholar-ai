@@ -67,16 +67,16 @@ export function WelcomeScreen({ onQuickStart }: WelcomeScreenProps) {
           <Button
             key={item.title}
             variant="outline"
-            className="h-auto p-4 flex flex-col items-start gap-2 text-left hover:bg-card hover:border-primary/50 transition-all group"
+            className="h-auto p-4 flex flex-col items-start gap-2 text-left hover:bg-card hover:border-primary/50 transition-all group overflow-hidden"
             onClick={() => onQuickStart(item.prompt)}
           >
-            <div className="flex items-center gap-2">
-              <item.icon className={`w-5 h-5 ${item.color}`} />
-              <span className="font-semibold text-foreground group-hover:text-primary transition-colors">
+            <div className="flex items-center gap-2 w-full min-w-0">
+              <item.icon className={`w-5 h-5 flex-shrink-0 ${item.color}`} />
+              <span className="font-semibold text-foreground group-hover:text-primary transition-colors truncate">
                 {item.title}
               </span>
             </div>
-            <p className="text-xs text-muted-foreground line-clamp-2">
+            <p className="text-xs text-muted-foreground line-clamp-2 w-full">
               {item.prompt}
             </p>
           </Button>

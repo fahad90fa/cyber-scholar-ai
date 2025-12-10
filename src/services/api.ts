@@ -1,7 +1,9 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || "https://nixiiarwumhbivyqysws.supabase.co";
+import { SecurityUtils, RequestSecurity } from '@/lib/security';
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 const API_V1_PREFIX = "/api/v1";
 const API_PREFIX = "/api";
-const SUPABASE_FUNCTIONS_URL = `${API_BASE_URL}/functions/v1`;
+const SUPABASE_FUNCTIONS_URL = `${import.meta.env.VITE_SUPABASE_URL || "https://nixiiarwumhbivyqysws.supabase.co"}/functions/v1`;
 
 export interface ApiError {
   detail: string;
@@ -35,6 +37,7 @@ class ApiClient {
   private getHeaders(includeAuth = true, includeAdminAuth = false): HeadersInit {
     const headers: HeadersInit = {
       "Content-Type": "application/json",
+      "X-Requested-With": "XMLHttpRequest",
     };
 
     if (includeAdminAuth) {
@@ -49,18 +52,23 @@ class ApiClient {
       }
     }
 
-    return headers;
+    return RequestSecurity.addSecurityHeaders(headers as Record<string, string>) as HeadersInit;
   }
 
   private getAdminToken(): string | null {
     return localStorage.getItem("admin_token");
   }
 
-  private buildUrl(endpoint: string, params?: Record<string, any>): string {
+  private buildUrl(endpoint: string, params?: Record<string, string | number | boolean>): string {
+    if (!RequestSecurity.validateURL(`${this.baseURL}${endpoint}`)) {
+      throw new Error('Invalid URL endpoint');
+    }
+
     let url = endpoint;
     if (params) {
+      const sanitizedParams = RequestSecurity.sanitizeURLParams(params);
       const queryParams = new URLSearchParams();
-      Object.entries(params).forEach(([key, value]) => {
+      Object.entries(sanitizedParams).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
           queryParams.append(key, String(value));
         }
@@ -77,7 +85,7 @@ class ApiClient {
     endpoint: string,
     options: RequestInit = {},
     includePrefix = true,
-    params?: Record<string, any>
+    params?: Record<string, string | number | boolean>
   ): Promise<T> {
     const isAdminRoute = endpoint.startsWith("/admin");
     const prefix = includePrefix ? this.apiPrefix : "";
@@ -85,10 +93,10 @@ class ApiClient {
     
     const url = `${this.baseURL}${prefix}${builtEndpoint}`;
     
-    const headers: any = {
+    const headers: Record<string, string> = {
       ...this.getHeaders(!isAdminRoute, isAdminRoute),
       ...options.headers,
-    };
+    } as Record<string, string>;
     
     const response = await fetch(url, {
       ...options,
@@ -169,7 +177,8 @@ export const trainingAPI = {
     const formData = new FormData();
     formData.append("file", file);
 
-    const url = `${API_BASE_URL}/training/upload`;
+    const baseURL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+    const url = `${baseURL}/api/v1/training/upload`;
     const token = apiClient.getToken();
     const headers: HeadersInit = {};
 
@@ -198,8 +207,22 @@ export const trainingAPI = {
   deleteDocument: (sourceName: string) =>
     apiClient.delete(`/training/documents/${sourceName}`),
 
+  verifyDocumentIntegrity: (sourceName: string) =>
+    apiClient.get(`/training/documents/${sourceName}/verify`),
+
   testRetrieval: (query: string) =>
     apiClient.get(`/training/test-retrieval?query=${encodeURIComponent(query)}`),
+};
+
+export const trainingChatAPI = {
+  sendTrainingMessage: (message: string) =>
+    apiClient.post("/training/chat", { message }),
+
+  getTrainingDocuments: () => apiClient.get("/training/documents"),
+
+  getTrainingChatHistory: () => apiClient.get("/training/chat-history"),
+
+  clearTrainingChatHistory: () => apiClient.delete("/training/chat-history"),
 };
 
 export const modulesAPI = {

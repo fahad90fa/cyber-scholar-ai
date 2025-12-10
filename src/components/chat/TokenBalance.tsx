@@ -1,59 +1,31 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Zap, ChevronDown } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useAuthContext } from "@/context/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { useSubscription } from "@/hooks/useSubscription";
 
 export function TokenBalance() {
-  const { user } = useAuthContext();
-  const [tokens, setTokens] = useState<{
-    total: number;
-    used: number;
-    available: number;
-    bonus: number;
-  } | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { 
+    subscription, 
+    tokensRemaining, 
+    isLoading, 
+    hasActiveSubscription,
+    profile
+  } = useSubscription();
   const [showDetails, setShowDetails] = useState(false);
 
-  useEffect(() => {
-    if (!user?.id) return;
 
-    const loadTokens = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("tokens_total, tokens_used, bonus_tokens")
-          .eq("id", user.id)
-          .single();
 
-        if (error) throw error;
-
-        setTokens({
-          total: data?.tokens_total || 0,
-          used: data?.tokens_used || 0,
-          available: Math.max(
-            0,
-            (data?.tokens_total || 0) + (data?.bonus_tokens || 0) - (data?.tokens_used || 0)
-          ),
-          bonus: data?.bonus_tokens || 0,
-        });
-      } catch (err) {
-        console.error("Failed to load token balance:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadTokens();
-
-    const interval = setInterval(loadTokens, 30000);
-    return () => clearInterval(interval);
-  }, [user?.id]);
-
-  if (loading || !tokens) {
+  if (isLoading) {
     return null;
   }
+
+  // Use profile data for real-time updates, fallback to subscription
+  const tokens = {
+    total: profile?.tokens_total || subscription?.tokens_total || 0,
+    used: profile?.tokens_used || subscription?.tokens_used || 0,
+    available: tokensRemaining || 0,
+  };
 
   const percentageUsed = tokens.total > 0 ? (tokens.used / tokens.total) * 100 : 0;
   const isLowTokens = tokens.available < 5;
@@ -93,20 +65,17 @@ export function TokenBalance() {
               </div>
             </div>
 
-            {tokens.bonus > 0 && (
+            {hasActiveSubscription && (
               <div className="pt-2 border-t border-primary/10">
-                <p className="text-sm font-medium text-cyan-400">
-                  Bonus Tokens: {tokens.bonus}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Purchased tokens that never expire
+                <p className="text-xs text-muted-foreground mb-2">
+                  <strong>Active Subscription:</strong> You have an active subscription with monthly token allocation.
                 </p>
               </div>
             )}
 
             <div className="pt-2 border-t border-primary/10">
               <p className="text-xs text-muted-foreground mb-2">
-                <strong>Free Tier:</strong> 20 tokens/month, resets on the 1st
+                <strong>Subscription:</strong> {subscription ? `${subscription.plan_name} (${subscription.billing_cycle})` : 'Free Tier'}
               </p>
               <p className="text-xs text-muted-foreground">
                 Each AI message uses 1 token. Upgrade your plan for more tokens!

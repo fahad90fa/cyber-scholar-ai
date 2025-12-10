@@ -43,7 +43,7 @@ export const SubscriptionRequired: React.FC<SubscriptionRequiredProps> = ({
   }
 
   if (!hasActiveSubscription) {
-    if (showPaywall) {
+    if (showPaywall && paywallOpen) {
       return (
         <PaywallModal
           open={paywallOpen}
@@ -54,6 +54,8 @@ export const SubscriptionRequired: React.FC<SubscriptionRequiredProps> = ({
           onRefresh={handleRefresh}
         />
       );
+    } else if (showPaywall && !paywallOpen) {
+      return <>{children}</>;
     } else {
       return <Navigate to="/pricing" replace />;
     }

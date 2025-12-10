@@ -48,12 +48,11 @@ export function ChatMessage({ message }: ChatMessageProps) {
       {/* Message Content */}
       <div
         className={cn(
-          "flex-1 max-w-[85%] sm:max-w-[75%] lg:max-w-[60%] rounded-lg p-4 border overflow-hidden",
+          "flex-1 rounded-lg p-6 border overflow-hidden",
           isUser
-            ? "bg-secondary/10 border-secondary/30"
-            : isWarning
-            ? "bg-terminal-amber/10 border-terminal-amber/30"
-            : "bg-card border-border"
+            ? "max-w-[75%] sm:max-w-[65%] lg:max-w-[45%] bg-secondary/10 border-secondary/30"
+            : "max-w-full lg:max-w-[95%] bg-card border-border",
+          isWarning && "bg-terminal-amber/10 border-terminal-amber/30"
         )}
       >
         {/* Header */}

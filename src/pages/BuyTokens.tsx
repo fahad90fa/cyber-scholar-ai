@@ -64,7 +64,6 @@ export default function BuyTokens() {
       const { error } = await supabase.from('token_pack_requests').insert({
         user_id: user!.id,
         token_pack_id: selectedPack.id,
-        tokens: selectedPack.tokens,
         amount: selectedPack.price,
         transaction_reference: formData.transactionReference,
         payment_date: formData.paymentDate,
@@ -74,7 +73,7 @@ export default function BuyTokens() {
       if (error) throw error;
 
       toast.success('Token pack request submitted!');
-      navigate('/payment-pending');
+      navigate('/token-pack-pending');
     } catch (error) {
       console.error('Failed to submit request:', error);
       toast.error('Failed to submit request');

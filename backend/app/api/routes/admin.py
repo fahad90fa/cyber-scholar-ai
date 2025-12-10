@@ -197,7 +197,9 @@ async def activate_subscription(payload: SubscriptionActivateRequest):
     
     await AdminQueries.update_user(payload.user_id, {
         "subscription_tier": plan["slug"],
-        "subscription_status": "active"
+        "subscription_status": "active",
+        "tokens_total": plan["tokens_per_month"],
+        "tokens_used": 0
     })
     
     return subscription
@@ -395,3 +397,47 @@ async def get_settings():
 async def update_settings(payload: BankSettingsUpdate):
     settings = await BankSettingsQueries.update_bank_settings(payload.dict(exclude_none=True))
     return settings
+
+
+class TokenCostUpdate(BaseModel):
+    cost_per_message: Optional[float] = None
+    cost_per_character_response: Optional[float] = None
+    enabled_per_message: Optional[bool] = None
+    enabled_per_character: Optional[bool] = None
+
+
+@router.get("/token-config", dependencies=[Depends(verify_admin_token)])
+async def get_token_config():
+    try:
+        result = supabase.rpc('get_token_config').execute()
+        if result.data and len(result.data) > 0:
+            return result.data[0]
+        return {
+            "cost_per_message": 1.0,
+            "cost_per_character_response": 0.0,
+            "enabled_per_message": True,
+            "enabled_per_character": False
+        }
+    except Exception as e:
+        print(f"Error fetching token config: {str(e)}")
+        return {
+            "cost_per_message": 1.0,
+            "cost_per_character_response": 0.0,
+            "enabled_per_message": True,
+            "enabled_per_character": False
+        }
+
+
+@router.put("/token-config", dependencies=[Depends(verify_admin_token)])
+async def update_token_config(payload: TokenCostUpdate):
+    try:
+        update_data = payload.dict(exclude_none=True)
+        update_data["updated_at"] = datetime.utcnow().isoformat()
+        
+        result = supabase.table("token_config").update(update_data).execute()
+        if result.data and len(result.data) > 0:
+            return result.data[0]
+        return {"success": True}
+    except Exception as e:
+        print(f"Error updating token config: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to update token config: {str(e)}")

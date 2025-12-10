@@ -3,18 +3,25 @@ import { useAuthContext } from "./context/AuthContext";
 import { useAdminAuth } from "./context/AdminAuthContext";
 import Landing from "./pages/Landing";
 import AuthPage from "./pages/AuthPage";
+import Dashboard from "./pages/Dashboard";
 import Index from "./pages/Index";
 import ModulePage from "./pages/ModulePage";
 import TrainingPage from "./pages/TrainingPage";
+import TrainingChatPage from "./pages/TrainingChatPage";
 import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
 import PricingPage from "./pages/PricingPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import CheckRequestPage from "./pages/CheckRequestPage";
 import SubscriptionDashboardPage from "./pages/SubscriptionDashboardPage";
+import BuyTokens from "./pages/BuyTokens";
+import PaymentPending from "./pages/PaymentPending";
+import TokenPackPending from "./pages/TokenPackPending";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import PublicRoute from "./components/auth/PublicRoute";
+
 import { SubscriptionRequired } from "./components/auth/SubscriptionRequired";
+import { ChatSecurityGuard } from "./components/chat/ChatSecurityGuard";
 import AdminLoginPage from "./pages/admin/AdminLoginPage";
 import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
 import AdminPaymentsPage from "./pages/admin/AdminPaymentsPage";
@@ -24,6 +31,7 @@ import AdminSubscriptionsPage from "./pages/admin/AdminSubscriptionsPage";
 import AdminPlansPage from "./pages/admin/AdminPlansPage";
 import AdminTokenPacksPage from "./pages/admin/AdminTokenPacksPage";
 import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
+import AdminInfoPage from "./pages/admin/AdminInfoPage";
 import AdminProtectedRoute from "./components/admin/AdminProtectedRoute";
 
 const ProtectedLayout = ({ children }: { children: React.ReactNode }) => {
@@ -79,15 +87,37 @@ export const AppRouter = () => {
           </ProtectedRoute>
         } 
       />
+      <Route 
+        path="/token-packs" 
+        element={
+          <ProtectedRoute>
+            <BuyTokens />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/payment-pending" 
+        element={
+          <ProtectedRoute>
+            <PaymentPending />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/token-pack-pending" 
+        element={
+          <ProtectedRoute>
+            <TokenPackPending />
+          </ProtectedRoute>
+        } 
+      />
       
-      {/* Protected App Routes - Require Subscription */}
+      {/* Protected App Routes */}
       <Route 
         path="/dashboard" 
         element={
           <ProtectedRoute>
-            <SubscriptionRequired showPaywall={false}>
-              <Navigate to="/chat" replace />
-            </SubscriptionRequired>
+            <Dashboard />
           </ProtectedRoute>
         } 
       />
@@ -96,9 +126,11 @@ export const AppRouter = () => {
         element={
           <ProtectedRoute>
             <SubscriptionRequired>
-              <ProtectedLayout>
-                <Index />
-              </ProtectedLayout>
+              <ChatSecurityGuard>
+                <ProtectedLayout>
+                  <Index />
+                </ProtectedLayout>
+              </ChatSecurityGuard>
             </SubscriptionRequired>
           </ProtectedRoute>
         } 
@@ -123,6 +155,20 @@ export const AppRouter = () => {
               <ProtectedLayout>
                 <TrainingPage />
               </ProtectedLayout>
+            </SubscriptionRequired>
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/training-chat" 
+        element={
+          <ProtectedRoute>
+            <SubscriptionRequired>
+              <ChatSecurityGuard>
+                <ProtectedLayout>
+                  <TrainingChatPage />
+                </ProtectedLayout>
+              </ChatSecurityGuard>
             </SubscriptionRequired>
           </ProtectedRoute>
         } 
@@ -215,6 +261,14 @@ export const AppRouter = () => {
         element={
           <AdminProtectedRoute>
             <AdminSettingsPage />
+          </AdminProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/admin/info" 
+        element={
+          <AdminProtectedRoute>
+            <AdminInfoPage />
           </AdminProtectedRoute>
         } 
       />

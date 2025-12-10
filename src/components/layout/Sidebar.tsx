@@ -14,6 +14,7 @@ import {
   Skull,
   Upload,
   Settings,
+  BookOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -66,6 +67,13 @@ const modules = [
     icon: Shield,
     path: "/module/defense",
     description: "Defensive strategies",
+  },
+  {
+    id: "training-chat",
+    name: "Training Chat",
+    icon: BookOpen,
+    path: "/training-chat",
+    description: "Chat with your documents",
   },
 ];
 

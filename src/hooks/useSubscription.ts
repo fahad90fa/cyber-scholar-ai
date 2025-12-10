@@ -35,6 +35,7 @@ interface SubscriptionPlan {
 
 interface SubscriptionState {
   subscription: Subscription | null;
+  profile?: any;
   isLoading: boolean;
   error: Error | null;
   hasActiveSubscription: boolean;
@@ -49,7 +50,6 @@ interface SubscriptionState {
 export const useSubscription = (): SubscriptionState & { refetchSubscription: () => Promise<any> } => {
   const { user } = useAuthContext();
   const [isInitializing, setIsInitializing] = React.useState(false);
-  const [isSubscribed, setIsSubscribed] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: profile, isLoading: profileLoading, error: profileError, refetch: refetchProfile } = useQuery({
@@ -66,9 +66,7 @@ export const useSubscription = (): SubscriptionState & { refetchSubscription: ()
       }
     },
     enabled: !!user?.id,
-    retry: 2,
-    retryDelay: 1000,
-    staleTime: 1000 * 60 * 1,
+    staleTime: Infinity,
   });
 
   const { data: subscriptions = [], isLoading: subscriptionsLoading, refetch: refetchSubs } = useQuery({
@@ -85,8 +83,7 @@ export const useSubscription = (): SubscriptionState & { refetchSubscription: ()
       }
     },
     enabled: !!user?.id,
-    staleTime: 1000 * 30,
-    refetchInterval: 1000 * 10,
+    staleTime: Infinity,
   });
   
   const refetchSubscription = async () => {
@@ -114,6 +111,7 @@ export const useSubscription = (): SubscriptionState & { refetchSubscription: ()
           } else {
             console.debug("Profile initialization info:", errorMsg);
           }
+        } finally {
           setIsInitializing(false);
         }
       }
@@ -124,61 +122,7 @@ export const useSubscription = (): SubscriptionState & { refetchSubscription: ()
     }
   }, [user?.id, profile, profileLoading, refetchProfile, isInitializing]);
 
-  useEffect(() => {
-    if (!isSubscribed && user?.id) {
-      const channels = [
-        supabase
-          .channel('user-profile-changes')
-          .on(
-            'postgres_changes',
-            {
-              event: '*',
-              schema: 'public',
-              table: 'profiles',
-              filter: `id=eq.${user.id}`,
-            },
-            (payload) => {
-              queryClient.invalidateQueries({
-                queryKey: ['profile', user.id],
-              });
-            }
-          ),
-        supabase
-          .channel('user-subscription-changes')
-          .on(
-            'postgres_changes',
-            {
-              event: '*',
-              schema: 'public',
-              table: 'subscriptions',
-              filter: `user_id=eq.${user.id}`,
-            },
-            (payload) => {
-              queryClient.invalidateQueries({
-                queryKey: ['profile', user.id],
-              });
-              queryClient.invalidateQueries({
-                queryKey: ['subscriptions', user.id],
-              });
-            }
-          ),
-      ];
 
-      channels.forEach(channel => {
-        channel.subscribe((status) => {
-          if (status === 'SUBSCRIBED') {
-            setIsSubscribed(true);
-          }
-        });
-      });
-
-      return () => {
-        channels.forEach(channel => {
-          channel.unsubscribe();
-        });
-      };
-    }
-  }, [isSubscribed, user?.id, queryClient]);
 
   const subscription: Subscription | null = subscriptions?.[0] || null;
 
@@ -207,7 +151,17 @@ export const useSubscription = (): SubscriptionState & { refetchSubscription: ()
     activeSubscriptionFromDb
   );
 
-  const tokensRemaining = Math.max(0, (profile?.tokens_total || 0) - (profile?.tokens_used || 0));
+  // Use profile tokens if available, otherwise use subscription tokens
+  const profileTokensTotal = profile?.tokens_total || 0;
+  const profileTokensUsed = profile?.tokens_used || 0;
+  const subscriptionTokensTotal = subscription?.tokens_total || 0;
+  const subscriptionTokensUsed = subscription?.tokens_used || 0;
+  
+  // Prefer profile tokens as they are updated in real-time
+  const tokensRemaining = Math.max(
+    0, 
+    (profileTokensTotal || subscriptionTokensTotal) - (profileTokensUsed || subscriptionTokensUsed)
+  );
 
   const isExpired = subscription ? new Date(subscription.expires_at) < new Date() : true;
 
@@ -230,5 +184,6 @@ export const useSubscription = (): SubscriptionState & { refetchSubscription: ()
     plans,
     loading,
     refetchSubscription,
+    profile,
   };
 };

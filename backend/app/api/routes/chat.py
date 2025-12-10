@@ -98,6 +98,18 @@ async def send_message(
     db.commit()
     db.refresh(ai_message)
     
+    # Deduct 1 token for the chat message
+    try:
+        from app.db.queries import TokenQueries
+        await TokenQueries.add_token_transaction(
+            user_id=current_user.id,
+            amount=1,
+            transaction_type="usage",
+            reason="Chat message"
+        )
+    except Exception as e:
+        print(f"Warning: Failed to deduct token: {str(e)}")
+    
     return {
         "message": {
             "id": user_message.id,

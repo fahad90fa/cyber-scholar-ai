@@ -1,4 +1,5 @@
 import { apiClient } from "./api";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface AdminStats {
   total_users: number;
@@ -292,6 +293,24 @@ class AdminService {
   async deleteTokenPack(packId: string) {
     const response = await apiClient.delete(`/admin/token-packs/${packId}`);
     return response;
+  }
+
+  async approveTokenPackRequest(requestId: string) {
+    const { error } = await supabase
+      .from('token_pack_requests')
+      .update({ status: 'confirmed', confirmed_at: new Date().toISOString() })
+      .eq('id', requestId);
+    
+    if (error) throw error;
+  }
+
+  async rejectTokenPackRequest(requestId: string, reason: string) {
+    const { error } = await supabase
+      .from('token_pack_requests')
+      .update({ status: 'rejected', rejected_at: new Date().toISOString(), rejection_reason: reason })
+      .eq('id', requestId);
+    
+    if (error) throw error;
   }
 
   // Settings
