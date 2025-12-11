@@ -13,3 +13,5 @@ pypdf==4.3.1
 requests==2.32.0
 aiofiles==24.1.0
 python-multipart==0.0.7
+chromadb==0.5.18
+langchain==0.1.20
