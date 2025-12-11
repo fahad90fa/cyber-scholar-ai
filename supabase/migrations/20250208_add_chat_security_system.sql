@@ -31,11 +31,13 @@ CREATE INDEX IF NOT EXISTS chat_security_log_user_created_idx ON public.chat_sec
 ALTER TABLE public.chat_security_log ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policy: Users can read their own security logs
+DROP POLICY IF EXISTS "Users can view own security logs" ON public.chat_security_log;
 CREATE POLICY "Users can view own security logs"
   ON public.chat_security_log FOR SELECT
   USING (auth.uid() = user_id);
 
 -- RLS Policy: Service role can insert logs
+DROP POLICY IF EXISTS "Service role can insert security logs" ON public.chat_security_log;
 CREATE POLICY "Service role can insert security logs"
   ON public.chat_security_log FOR INSERT
   WITH CHECK (auth.uid() = user_id OR auth.role() = 'service_role');

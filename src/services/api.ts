@@ -202,6 +202,36 @@ export const trainingAPI = {
     return response.json();
   },
 
+  uploadDocumentWithChecksum: async (file: File, clientChecksum: string) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("client_checksum", clientChecksum);
+
+    const baseURL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+    const url = `${baseURL}/api/v1/training/upload-with-verify`;
+    const token = apiClient.getToken();
+    const headers: HeadersInit = {};
+
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers,
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({
+        detail: "Upload failed",
+      }));
+      throw new Error(error.detail || `HTTP ${response.status}`);
+    }
+
+    return response.json();
+  },
+
   getDocuments: () => apiClient.get("/training/documents"),
 
   deleteDocument: (sourceName: string) =>
@@ -209,6 +239,9 @@ export const trainingAPI = {
 
   verifyDocumentIntegrity: (sourceName: string) =>
     apiClient.get(`/training/documents/${sourceName}/verify`),
+
+  verifyTwoWayIntegrity: (sourceName: string) =>
+    apiClient.get(`/training/documents/${sourceName}/verify-two-way`),
 
   testRetrieval: (query: string) =>
     apiClient.get(`/training/test-retrieval?query=${encodeURIComponent(query)}`),

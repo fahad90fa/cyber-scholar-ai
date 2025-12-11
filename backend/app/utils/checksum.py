@@ -17,7 +17,7 @@ class ChecksumUtils:
     @staticmethod
     def verify_checksum(data: bytes, expected_checksum: str) -> bool:
         computed = ChecksumUtils.compute_sha256(data)
-        return computed == expected_checksum
+        return computed.lower() == expected_checksum.lower()
     
     @staticmethod
     def get_file_stats(file_path: str) -> Tuple[str, int]:

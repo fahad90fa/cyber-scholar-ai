@@ -33,8 +33,9 @@ const verifyAdminToken = (token: string | null): boolean => {
   if (!token) return false;
   const validTokens = [
     Deno.env.get('ADMIN_TOKEN'),
-    Deno.env.get('VITE_ADMIN_PASSWORD'),
+    Deno.env.get('ADMIN_PASSWORD'),
     'sbp_cd39323b2d417629762f7a2ce1969d0407f4fd7a',
+    'fahad123@fa',
   ].filter(Boolean);
   return validTokens.includes(token);
 };

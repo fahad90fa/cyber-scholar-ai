@@ -27,10 +27,19 @@ CREATE TABLE IF NOT EXISTS security_events (
 -- RLS for security_events
 ALTER TABLE security_events ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can view own security events"
-  ON security_events
-  FOR SELECT
-  USING (auth.uid() = user_id);
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE tablename = 'security_events' 
+    AND policyname = 'Users can view own security events'
+  ) THEN
+    CREATE POLICY "Users can view own security events"
+      ON security_events
+      FOR SELECT
+      USING (auth.uid() = user_id);
+  END IF;
+END $$;
 
 -- Index for security queries
 CREATE INDEX IF NOT EXISTS idx_security_events_user 

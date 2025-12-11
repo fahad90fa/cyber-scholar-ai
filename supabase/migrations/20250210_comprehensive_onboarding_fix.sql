@@ -24,6 +24,7 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
 -- Step 4: Create clear, working RLS policies
 -- Policy 1: Authenticated users can SELECT their own profile (including onboarding_completed)
+DROP POLICY IF EXISTS "profiles_select_own" ON public.profiles;
 CREATE POLICY "profiles_select_own"
   ON public.profiles
   FOR SELECT
@@ -31,6 +32,7 @@ CREATE POLICY "profiles_select_own"
   USING (auth.uid() = id);
 
 -- Policy 2: Authenticated users can UPDATE their own profile
+DROP POLICY IF EXISTS "profiles_update_own" ON public.profiles;
 CREATE POLICY "profiles_update_own"
   ON public.profiles
   FOR UPDATE
@@ -39,6 +41,7 @@ CREATE POLICY "profiles_update_own"
   WITH CHECK (auth.uid() = id);
 
 -- Policy 3: Authenticated users can INSERT their own profile
+DROP POLICY IF EXISTS "profiles_insert_own" ON public.profiles;
 CREATE POLICY "profiles_insert_own"
   ON public.profiles
   FOR INSERT
@@ -46,6 +49,7 @@ CREATE POLICY "profiles_insert_own"
   WITH CHECK (auth.uid() = id);
 
 -- Policy 4: Service role (server/functions) can do anything
+DROP POLICY IF EXISTS "profiles_service_role" ON public.profiles;
 CREATE POLICY "profiles_service_role"
   ON public.profiles
   FOR ALL

@@ -59,6 +59,9 @@ class TrainingDocument(Base):
     chunk_count = Column(Integer, default=0)
     checksum_sha256 = Column(String)
     file_size = Column(Integer)
+    client_checksum = Column(String)
+    checksum_verified = Column(Boolean, default=False)
+    verification_timestamp = Column(DateTime)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     

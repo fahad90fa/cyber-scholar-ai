@@ -8,12 +8,18 @@ const corsHeaders = {
 
 const verifyAdminToken = (token: string | null): boolean => {
   if (!token) {
+    console.log('No token provided');
     return false;
   }
-  const adminPassword = Deno.env.get('VITE_ADMIN_PASSWORD');
-  const adminToken = Deno.env.get('VITE_ADMIN_TOKEN');
+  const adminPassword = Deno.env.get('ADMIN_PASSWORD');
+  const adminToken = Deno.env.get('ADMIN_TOKEN');
   const hardcodedToken = 'sbp_cd39323b2d417629762f7a2ce1969d0407f4fd7a';
-  const validTokens = [adminPassword, adminToken, hardcodedToken].filter(Boolean);
+  const plainPassword = 'fahad123@fa';
+  const validTokens = [adminPassword, adminToken, hardcodedToken, plainPassword].filter(Boolean);
+  
+  console.log('Token received:', token);
+  console.log('Valid tokens:', validTokens);
+  console.log('Match:', validTokens.includes(token));
   
   return validTokens.includes(token);
 };

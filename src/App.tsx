@@ -6,6 +6,7 @@ import { BrowserRouter } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { AdminAuthProvider } from "./context/AdminAuthContext";
 import { AppRouter } from "./router";
+import { TrackIPWrapper } from "./components/TrackIPWrapper";
 
 const queryClient = new QueryClient();
 
@@ -17,7 +18,9 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
-            <AppRouter />
+            <TrackIPWrapper>
+              <AppRouter />
+            </TrackIPWrapper>
           </BrowserRouter>
         </TooltipProvider>
       </AdminAuthProvider>

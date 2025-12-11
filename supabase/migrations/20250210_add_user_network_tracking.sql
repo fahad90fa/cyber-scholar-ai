@@ -38,23 +38,27 @@ ALTER TABLE user_devices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_ip_history ENABLE ROW LEVEL SECURITY;
 
 -- Deny all access via anon key
+DROP POLICY IF EXISTS "Deny anon access to user_devices" ON user_devices;
 CREATE POLICY "Deny anon access to user_devices"
   ON user_devices
   AS RESTRICTIVE
   USING (FALSE);
 
+DROP POLICY IF EXISTS "Deny anon access to user_ip_history" ON user_ip_history;
 CREATE POLICY "Deny anon access to user_ip_history"
   ON user_ip_history
   AS RESTRICTIVE
   USING (FALSE);
 
 -- Allow service role full access (used by Edge Functions)
+DROP POLICY IF EXISTS "Service role access to user_devices" ON user_devices;
 CREATE POLICY "Service role access to user_devices"
   ON user_devices
   AS PERMISSIVE
   USING (auth.jwt() ->> 'role' = 'service_role')
   WITH CHECK (auth.jwt() ->> 'role' = 'service_role');
 
+DROP POLICY IF EXISTS "Service role access to user_ip_history" ON user_ip_history;
 CREATE POLICY "Service role access to user_ip_history"
   ON user_ip_history
   AS PERMISSIVE

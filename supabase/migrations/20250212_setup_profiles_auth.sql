@@ -38,18 +38,21 @@ DROP POLICY IF EXISTS "profiles_service_role" ON public.profiles;
 
 -- RLS Policies - FIXED VERSION
 -- Allow authenticated users to read their own profile
+DROP POLICY IF EXISTS "profiles_select_own" ON public.profiles;
 CREATE POLICY "profiles_select_own"
   ON public.profiles FOR SELECT
   TO authenticated
   USING (auth.uid() = id);
 
 -- Allow authenticated users to INSERT their own profile
+DROP POLICY IF EXISTS "profiles_insert_own" ON public.profiles;
 CREATE POLICY "profiles_insert_own"
   ON public.profiles FOR INSERT
   TO authenticated
   WITH CHECK (auth.uid() = id);
 
 -- Allow authenticated users to UPDATE their own profile
+DROP POLICY IF EXISTS "profiles_update_own" ON public.profiles;
 CREATE POLICY "profiles_update_own"
   ON public.profiles FOR UPDATE
   TO authenticated
@@ -57,6 +60,7 @@ CREATE POLICY "profiles_update_own"
   WITH CHECK (auth.uid() = id);
 
 -- Allow service role (backend/functions) to do anything
+DROP POLICY IF EXISTS "profiles_service_role" ON public.profiles;
 CREATE POLICY "profiles_service_role"
   ON public.profiles FOR ALL
   TO service_role

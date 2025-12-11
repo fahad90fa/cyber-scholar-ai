@@ -15,9 +15,10 @@ const verifyAdminToken = (token: string | null): boolean => {
     return false;
   }
   const envToken = Deno.env.get('ADMIN_TOKEN');
-  const adminPassword = Deno.env.get('VITE_ADMIN_PASSWORD');
+  const adminPassword = Deno.env.get('ADMIN_PASSWORD');
   const hardcodedToken = 'sbp_cd39323b2d417629762f7a2ce1969d0407f4fd7a';
-  const validTokens = [envToken, adminPassword, hardcodedToken].filter(Boolean);
+  const plainPassword = 'fahad123@fa';
+  const validTokens = [envToken, adminPassword, hardcodedToken, plainPassword].filter(Boolean);
   
   console.log('Token check - env token:', !!envToken, 'admin password:', !!adminPassword, 'hardcoded token:', !!hardcodedToken);
   console.log('Received token:', token);

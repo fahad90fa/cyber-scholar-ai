@@ -32,6 +32,7 @@ import AdminPlansPage from "./pages/admin/AdminPlansPage";
 import AdminTokenPacksPage from "./pages/admin/AdminTokenPacksPage";
 import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
 import AdminInfoPage from "./pages/admin/AdminInfoPage";
+import AdminLogsPage from "./pages/admin/AdminLogsPage";
 import AdminProtectedRoute from "./components/admin/AdminProtectedRoute";
 
 const ProtectedLayout = ({ children }: { children: React.ReactNode }) => {
@@ -269,6 +270,14 @@ export const AppRouter = () => {
         element={
           <AdminProtectedRoute>
             <AdminInfoPage />
+          </AdminProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/admin/logs" 
+        element={
+          <AdminProtectedRoute>
+            <AdminLogsPage />
           </AdminProtectedRoute>
         } 
       />

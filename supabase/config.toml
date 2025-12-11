@@ -395,3 +395,27 @@ verify_jwt = false
 
 [functions.retrieve-context]
 verify_jwt = false
+
+[functions.admin-user-info]
+verify_jwt = false
+
+[functions.admin-users]
+verify_jwt = false
+
+[functions.admin-plans]
+verify_jwt = false
+
+[functions.admin-token-packs]
+verify_jwt = false
+
+[functions.admin-subscriptions]
+verify_jwt = false
+
+[functions.admin-settings]
+verify_jwt = false
+
+[functions.admin-get-logs]
+verify_jwt = false
+
+[functions.track-user-ip]
+verify_jwt = false

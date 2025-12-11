@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Trash2, FileText, Loader2, Shield, AlertCircle, Check } from "lucide-react";
+import { Trash2, FileText, Loader2, Shield, AlertCircle, Check, GitCompare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { trainingAPI } from "@/services/api";
@@ -12,6 +12,9 @@ interface Document {
   chunk_count: number;
   checksum_sha256?: string;
   file_size?: number;
+  client_checksum?: string;
+  checksum_verified?: boolean;
+  verification_timestamp?: string;
   created_at: string;
 }
 
@@ -93,6 +96,42 @@ export function DocumentList({ refreshTrigger = 0 }: DocumentListProps) {
     }
   };
 
+  const handleVerifyTwoWay = async (sourceName: string) => {
+    setVerifying(v => ({ ...v, [sourceName]: { status: "loading", message: "", loading: true } }));
+    try {
+      const result = await trainingAPI.verifyTwoWayIntegrity(sourceName) as {
+        verified: boolean;
+        verification_type: string;
+        message: string;
+        server_checksum?: string;
+        client_checksum?: string;
+        match: boolean;
+        server_file_ok: boolean;
+      };
+      setVerifying(v => ({
+        ...v,
+        [sourceName]: {
+          status: result.verified ? "two_way_ok" : "two_way_mismatch",
+          message: result.message,
+          loading: false
+        }
+      }));
+      if (result.verified) {
+        toast.success("✓ Two-way verification successful - Client & Server checksums match!");
+      } else if (!result.match) {
+        toast.error("✗ Checksum mismatch - Client and Server checksums do not match");
+      } else if (!result.server_file_ok) {
+        toast.error("✗ Server file integrity compromised");
+      } else {
+        toast.error(`✗ ${result.message}`);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Verification failed";
+      setVerifying(v => ({ ...v, [sourceName]: { status: "error", message, loading: false } }));
+      toast.error(`Two-way verification error: ${message}`);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -135,14 +174,35 @@ export function DocumentList({ refreshTrigger = 0 }: DocumentListProps) {
               </div>
 
               <div className="flex items-center gap-2 ml-2 flex-shrink-0">
-                {doc.checksum_sha256 && (
+                {doc.client_checksum && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleVerifyTwoWay(doc.source_name)}
+                    disabled={verification?.loading || deleting === doc.source_name}
+                    className="text-purple-400 hover:text-purple-300"
+                    title="Two-way checksum verification (Client ↔ Server)"
+                  >
+                    {verification?.loading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : verification?.status === "two_way_ok" ? (
+                      <Check className="w-4 h-4 text-green-500" />
+                    ) : verification?.status === "two_way_mismatch" ? (
+                      <AlertCircle className="w-4 h-4 text-red-500" />
+                    ) : (
+                      <GitCompare className="w-4 h-4" />
+                    )}
+                  </Button>
+                )}
+
+                {doc.checksum_sha256 && !doc.client_checksum && (
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => handleVerifyIntegrity(doc.source_name)}
                     disabled={verification?.loading || deleting === doc.source_name}
                     className="text-blue-400 hover:text-blue-300"
-                    title="Verify file integrity"
+                    title="One-way verification (Server only)"
                   >
                     {verification?.loading ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -172,9 +232,29 @@ export function DocumentList({ refreshTrigger = 0 }: DocumentListProps) {
               </div>
             </div>
 
-            {doc.checksum_sha256 && (
+            {doc.client_checksum && doc.checksum_sha256 && (
+              <div className="ml-8 space-y-1">
+                <div className="text-xs text-muted-foreground font-mono">
+                  Client: {doc.client_checksum.substring(0, 16)}...
+                </div>
+                <div className="text-xs text-muted-foreground font-mono">
+                  Server: {doc.checksum_sha256.substring(0, 16)}...
+                </div>
+                {doc.checksum_verified && (
+                  <div className="text-xs text-green-500 font-medium">
+                    ✓ Two-way verified {doc.verification_timestamp ? `at ${new Date(doc.verification_timestamp).toLocaleString()}` : ""}
+                  </div>
+                )}
+                {verification && (
+                  <span className={`text-xs ml-0 ${verification.status === "two_way_ok" ? "text-green-500" : verification.status === "ok" ? "text-green-500" : "text-red-500"}`}>
+                    [{verification.status === "two_way_ok" ? "✓ Two-way OK" : verification.status === "ok" ? "✓ One-way OK" : "✗ " + verification.status}]
+                  </span>
+                )}
+              </div>
+            )}
+            {doc.checksum_sha256 && !doc.client_checksum && (
               <div className="ml-8 text-xs text-muted-foreground font-mono">
-                SHA256: {doc.checksum_sha256.substring(0, 16)}...
+                SHA256: {doc.checksum_sha256.substring(0, 16)}... (legacy)
                 {verification && (
                   <span className={`ml-2 ${verification.status === "ok" ? "text-green-500" : "text-red-500"}`}>
                     [{verification.status === "ok" ? "✓ OK" : "✗ " + verification.status}]

@@ -7,7 +7,8 @@ import {
   Coins, 
   Settings, 
   LogOut,
-  Shield
+  Shield,
+  ActivitySquare
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAdmin } from '@/hooks/useAdmin';
@@ -19,6 +20,7 @@ const navItems = [
   { path: '/admin/payments', icon: CreditCard, label: 'Payments' },
   { path: '/admin/plans', icon: Package, label: 'Plans' },
   { path: '/admin/token-packs', icon: Coins, label: 'Token Packs' },
+  { path: '/admin/logs', icon: ActivitySquare, label: 'Logs' },
   { path: '/admin/settings', icon: Settings, label: 'Settings' },
 ];
 
