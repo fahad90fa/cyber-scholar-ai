@@ -73,6 +73,10 @@ async def validation_exception_handler(request, exc):
             "message": msg
         })
     
+    origin = request.headers.get("origin", "*")
+    allowed = [o for o in allowed_origins if origin.endswith(o.replace("https://", "").replace("http://", ""))]
+    cors_origin = origin if allowed or "*" in allowed_origins else "*"
+    
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         content={
@@ -80,8 +84,29 @@ async def validation_exception_handler(request, exc):
             "errors": errors
         },
         headers={
-            "Access-Control-Allow-Origin": request.headers.get("origin", "*"),
+            "Access-Control-Allow-Origin": cors_origin,
             "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization",
+        }
+    )
+
+
+@app.exception_handler(Exception)
+async def general_exception_handler(request, exc):
+    logger.error(f"Unhandled exception: {str(exc)}", exc_info=True)
+    origin = request.headers.get("origin", "*")
+    allowed = [o for o in allowed_origins if origin.endswith(o.replace("https://", "").replace("http://", ""))]
+    cors_origin = origin if allowed or "*" in allowed_origins else "*"
+    
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": "Internal server error"},
+        headers={
+            "Access-Control-Allow-Origin": cors_origin,
+            "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization",
         }
     )
 

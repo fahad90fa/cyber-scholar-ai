@@ -75,12 +75,14 @@ const CheckoutPage = () => {
         console.log("Payment request created:", paymentRequest.id);
       } catch (error: any) {
         console.error("Create payment request error:", error);
-        if (error.message.includes("not authenticated")) {
-          toast.error("Your session has expired. Please refresh and try again.");
-          window.location.reload();
+        if (error.message?.includes("Authentication failed") || error.message?.includes("expired token")) {
+          toast.error("Your session has expired. Please login again.");
+          window.location.href = "/login";
           return;
         }
-        throw error;
+        toast.error(error.message || "Failed to create payment request");
+        setSubmitting(false);
+        return;
       }
 
       console.log("Submitting payment proof...");

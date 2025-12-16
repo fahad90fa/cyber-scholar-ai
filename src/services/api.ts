@@ -48,11 +48,39 @@ class ApiClient {
     } else if (includeAuth) {
       const token = this.getToken();
       if (token) {
+        if (this.isTokenExpired(token)) {
+          console.warn("Token is expired, clearing and rethrowing");
+          this.clearToken();
+          throw new Error("Token expired - please login again");
+        }
         headers["Authorization"] = `Bearer ${token}`;
       }
     }
 
     return RequestSecurity.addSecurityHeaders(headers as Record<string, string>) as HeadersInit;
+  }
+
+  private isTokenExpired(token: string): boolean {
+    try {
+      const parts = token.split(".");
+      if (parts.length !== 3) return true;
+
+      const payload = JSON.parse(atob(parts[1]));
+      if (!payload.exp) return false;
+
+      const expTime = payload.exp * 1000;
+      const now = Date.now();
+      const isExpired = now > expTime;
+
+      if (isExpired) {
+        console.warn(`Token expired at ${new Date(expTime).toISOString()}, now is ${new Date(now).toISOString()}`);
+      }
+
+      return isExpired;
+    } catch (error) {
+      console.warn("Error checking token expiration:", error);
+      return true;
+    }
   }
 
   private getAdminToken(): string | null {
@@ -93,26 +121,41 @@ class ApiClient {
     
     const url = `${this.baseURL}${prefix}${builtEndpoint}`;
     
-    const headers: Record<string, string> = {
-      ...this.getHeaders(!isAdminRoute, isAdminRoute),
-      ...options.headers,
-    } as Record<string, string>;
-    
-    const response = await fetch(url, {
-      ...options,
-      headers,
-    });
+    try {
+      const headers: Record<string, string> = {
+        ...this.getHeaders(!isAdminRoute, isAdminRoute),
+        ...options.headers,
+      } as Record<string, string>;
+      
+      const response = await fetch(url, {
+        ...options,
+        headers,
+      });
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({
-        detail: "An error occurred",
-      }));
-      const err = new Error(error.detail || error.message || `HTTP ${response.status}`) as any;
-      err.status = response.status;
-      throw err;
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({
+          detail: "An error occurred",
+        }));
+        
+        if (response.status === 401) {
+          this.clearToken();
+          const err = new Error(`Authentication failed: ${error.detail || "Invalid or expired token. Please login again."}`) as any;
+          err.status = 401;
+          throw err;
+        }
+        
+        const err = new Error(error.detail || error.message || `HTTP ${response.status}`) as any;
+        err.status = response.status;
+        throw err;
+      }
+
+      return response.json() as Promise<T>;
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("Token expired")) {
+        throw error;
+      }
+      throw error;
     }
-
-    return response.json() as Promise<T>;
   }
 
   async get<T>(endpoint: string, includePrefix = true, params?: Record<string, any>): Promise<T> {

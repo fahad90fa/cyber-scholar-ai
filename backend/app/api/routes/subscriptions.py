@@ -2,7 +2,10 @@ from fastapi import APIRouter, HTTPException, Depends, status, Header
 from pydantic import BaseModel
 from typing import Optional
 from app.db.queries import SubscriptionQueries, PaymentQueries, TokenQueries, BankSettingsQueries
-from app.security import verify_token
+from app.security import verify_token, get_current_user
+from app.models import User
+from app.database import get_db
+from sqlalchemy.orm import Session
 
 router = APIRouter(tags=["subscriptions"])
 
@@ -64,33 +67,24 @@ async def get_subscription_plan(slug: str):
 
 
 @router.get("/subscriptions/current")
-async def get_current_subscription(token: str = Depends(get_token_from_header)):
-    auth_data = await verify_token(token)
-    user_id = auth_data["user_id"]
-    
-    subscription = await SubscriptionQueries.get_user_subscription(user_id)
+async def get_current_subscription(current_user: User = Depends(get_current_user)):
+    subscription = await SubscriptionQueries.get_user_subscription(current_user.id)
     return subscription
 
 
 @router.get("/subscriptions/history")
-async def get_subscription_history(token: str = Depends(get_token_from_header)):
-    auth_data = await verify_token(token)
-    user_id = auth_data["user_id"]
-    
-    history = await SubscriptionQueries.get_subscription_history(user_id)
+async def get_subscription_history(current_user: User = Depends(get_current_user)):
+    history = await SubscriptionQueries.get_subscription_history(current_user.id)
     return history
 
 
 @router.post("/payment-requests")
-async def create_payment_request(payload: PaymentRequestCreate, token: str = Depends(get_token_from_header)):
-    auth_data = await verify_token(token)
-    user_id = auth_data["user_id"]
-    
+async def create_payment_request(payload: PaymentRequestCreate, current_user: User = Depends(get_current_user)):
     plan = await SubscriptionQueries.get_plan_by_id(payload.plan_id)
     amount = plan["monthly_price"] if payload.billing_cycle == "monthly" else plan["yearly_price"]
     
     payment_request = await PaymentQueries.create_payment_request(
-        user_id=user_id,
+        user_id=current_user.id,
         plan_id=payload.plan_id,
         plan_name=plan["name"],
         billing_cycle=payload.billing_cycle,
@@ -104,12 +98,9 @@ async def create_payment_request(payload: PaymentRequestCreate, token: str = Dep
 
 
 @router.post("/payment-requests/{payment_id}/submit")
-async def submit_payment_proof(payment_id: str, payload: PaymentProofSubmit, token: str = Depends(get_token_from_header)):
-    auth_data = await verify_token(token)
-    user_id = auth_data["user_id"]
-    
+async def submit_payment_proof(payment_id: str, payload: PaymentProofSubmit, current_user: User = Depends(get_current_user)):
     payment = await PaymentQueries.get_payment_request(payment_id)
-    if payment["user_id"] != user_id:
+    if payment["user_id"] != current_user.id:
         raise HTTPException(status_code=403, detail="Forbidden")
     
     updated = await PaymentQueries.submit_payment_proof(
@@ -126,41 +117,29 @@ async def submit_payment_proof(payment_id: str, payload: PaymentProofSubmit, tok
 
 
 @router.get("/payment-requests/user")
-async def get_user_payment_requests(token: str = Depends(get_token_from_header)):
-    auth_data = await verify_token(token)
-    user_id = auth_data["user_id"]
-    
-    payments = await PaymentQueries.get_user_payment_requests(user_id)
+async def get_user_payment_requests(current_user: User = Depends(get_current_user)):
+    payments = await PaymentQueries.get_user_payment_requests(current_user.id)
     return payments
 
 
 @router.get("/payment-requests/{payment_id}")
-async def get_payment_request(payment_id: str, token: str = Depends(get_token_from_header)):
-    auth_data = await verify_token(token)
-    user_id = auth_data["user_id"]
-    
+async def get_payment_request(payment_id: str, current_user: User = Depends(get_current_user)):
     payment = await PaymentQueries.get_payment_request(payment_id)
-    if payment["user_id"] != user_id:
+    if payment["user_id"] != current_user.id:
         raise HTTPException(status_code=403, detail="Forbidden")
     
     return payment
 
 
 @router.get("/tokens/balance")
-async def get_token_balance(token: str = Depends(get_token_from_header)):
-    auth_data = await verify_token(token)
-    user_id = auth_data["user_id"]
-    
-    tokens = await TokenQueries.get_user_tokens(user_id)
+async def get_token_balance(current_user: User = Depends(get_current_user)):
+    tokens = await TokenQueries.get_user_tokens(current_user.id)
     return tokens
 
 
 @router.get("/tokens/transactions")
-async def get_token_transactions(token: str = Depends(get_token_from_header)):
-    auth_data = await verify_token(token)
-    user_id = auth_data["user_id"]
-    
-    transactions = await TokenQueries.get_token_transactions(user_id)
+async def get_token_transactions(current_user: User = Depends(get_current_user)):
+    transactions = await TokenQueries.get_token_transactions(current_user.id)
     return transactions
 
 

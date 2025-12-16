@@ -37,28 +37,49 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
 
 
 def decode_token(token: str) -> dict:
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    try:
+        payload = jwt.decode(token, settings.SUPABASE_JWT_SECRET, algorithms=["HS256"])
+        logger.debug("Token decoded successfully with SUPABASE_JWT_SECRET")
+        return payload
+    except JWTError as e:
+        logger.debug(f"SUPABASE_JWT_SECRET decode failed: {str(e)}")
+    except Exception as e:
+        logger.debug(f"Error decoding with SUPABASE_JWT_SECRET: {str(e)}")
+    
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        logger.debug("Token decoded successfully with SECRET_KEY")
         return payload
-    except JWTError:
-        try:
-            payload = jwt.decode(token, settings.SUPABASE_JWT_SECRET, algorithms=["HS256"], options={"verify_signature": True})
-            return payload
-        except JWTError:
-            return None
+    except JWTError as e:
+        logger.debug(f"SECRET_KEY decode failed: {str(e)}")
+    except Exception as e:
+        logger.debug(f"Error decoding with SECRET_KEY: {str(e)}")
+    
+    logger.warning("Failed to decode token with configured secrets")
+    return None
 
 
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ) -> User:
+    if not credentials or not credentials.credentials:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing authentication credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
     token = credentials.credentials
     payload = decode_token(token)
     
     if payload is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials",
+            detail="Invalid or expired token",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
@@ -66,7 +87,8 @@ async def get_current_user(
     if user_id is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials",
+            detail="Token missing user identifier",
+            headers={"WWW-Authenticate": "Bearer"},
         )
     
     user = db.query(User).filter(User.id == user_id).first()
@@ -92,15 +114,29 @@ async def get_current_user(
                     try:
                         db.commit()
                         db.refresh(user)
-                    except:
+                    except Exception:
                         db.rollback()
-            except:
-                pass
+            except Exception:
+                if email:
+                    user = User(
+                        id=user_id,
+                        email=email,
+                        username=email.split("@")[0],
+                        hashed_password="",
+                        is_active=True
+                    )
+                    db.add(user)
+                    try:
+                        db.commit()
+                        db.refresh(user)
+                    except Exception:
+                        db.rollback()
         
         if user is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid authentication credentials",
+                detail="User not found in system",
+                headers={"WWW-Authenticate": "Bearer"},
             )
     
     return user

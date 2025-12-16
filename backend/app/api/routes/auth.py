@@ -165,6 +165,12 @@ async def login(credentials: schemas.UserLogin, db: Session = Depends(get_db)):
 
 @router.get("/me", response_model=schemas.UserResponse)
 async def get_me(current_user: User = Depends(security.get_current_user)):
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found"
+        )
+    
     return {
         "id": current_user.id,
         "email": current_user.email,
