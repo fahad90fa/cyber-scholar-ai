@@ -41,7 +41,11 @@ def decode_token(token: str) -> dict:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         return payload
     except JWTError:
-        return None
+        try:
+            payload = jwt.decode(token, settings.SUPABASE_JWT_SECRET, algorithms=["HS256"], options={"verify_signature": True})
+            return payload
+        except JWTError:
+            return None
 
 
 async def get_current_user(
@@ -66,11 +70,38 @@ async def get_current_user(
         )
     
     user = db.query(User).filter(User.id == user_id).first()
+    
     if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials",
-        )
+        email = payload.get("email", "")
+        if email:
+            user = db.query(User).filter(User.email == email).first()
+        
+        if user is None:
+            from app.core.supabase_client import supabase
+            try:
+                supabase_user = supabase.auth.get_user(token)
+                if supabase_user and supabase_user.user:
+                    user = User(
+                        id=supabase_user.user.id,
+                        email=supabase_user.user.email or "",
+                        username=supabase_user.user.email.split("@")[0] if supabase_user.user.email else "user",
+                        hashed_password="",
+                        is_active=True
+                    )
+                    db.add(user)
+                    try:
+                        db.commit()
+                        db.refresh(user)
+                    except:
+                        db.rollback()
+            except:
+                pass
+        
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid authentication credentials",
+            )
     
     return user
 
