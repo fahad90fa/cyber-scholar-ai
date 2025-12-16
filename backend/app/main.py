@@ -73,13 +73,12 @@ if settings.ENVIRONMENT == "production":
             
             host = request.headers.get("host", "")
             
-            is_allowed = any(
-                host == allowed or 
-                host.endswith("." + allowed) or
-                host.endswith(allowed) or
-                allowed.startswith("*") and host.endswith(allowed[2:])
-                for allowed in self.allowed_hosts
-            )
+            def check_host_allowed(host: str, allowed: str) -> bool:
+                if allowed.startswith("*"):
+                    return host.endswith(allowed[2:])
+                return host == allowed or host.endswith("." + allowed)
+            
+            is_allowed = any(check_host_allowed(host, allowed) for allowed in self.allowed_hosts)
             
             if not is_allowed:
                 logger.warning(f"Blocked request from unauthorized host: {host}, allowed: {self.allowed_hosts}")
