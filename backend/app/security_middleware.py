@@ -47,6 +47,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
+        if request.method == "OPTIONS":
+            return await call_next(request)
+        
         response = await call_next(request)
         
         if request.method != "OPTIONS":
@@ -68,6 +71,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
+        if request.method == "OPTIONS":
+            return await call_next(request)
+        
         client_ip = request.client.host if request.client else "unknown"
         method = request.method
         path = request.url.path

@@ -8,6 +8,9 @@ settings = get_settings()
 
 class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
+        if request.method == "OPTIONS":
+            return await call_next(request)
+        
         # List of paths that require manual JWT verification via middleware
         protected_paths = [
             "/api/v1/auth/profile",

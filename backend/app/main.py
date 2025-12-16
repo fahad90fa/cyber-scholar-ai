@@ -59,13 +59,25 @@ app.add_middleware(CORSMiddleware, **cors_config)
 app.add_middleware(AuthMiddleware)
 
 if settings.ENVIRONMENT == "production":
+    from starlette.middleware.base import BaseHTTPMiddleware
+    
+    class TrustedHostWithCORSMiddleware(BaseHTTPMiddleware):
+        def __init__(self, app, allowed_hosts):
+            super().__init__(app)
+            self.trusted_host_middleware = TrustedHostMiddleware(app, allowed_hosts=allowed_hosts)
+        
+        async def dispatch(self, request, call_next):
+            if request.method == "OPTIONS":
+                return await call_next(request)
+            return await self.trusted_host_middleware.dispatch(request, call_next)
+    
     trusted_hosts = [origin.replace("http://", "").replace("https://", "") for origin in allowed_origins]
     trusted_hosts.extend([
         "backend-six-gamma-93.vercel.app",
         "*.vercel.app"
     ])
     logger.info(f"Trusted hosts: {trusted_hosts}")
-    app.add_middleware(TrustedHostMiddleware, allowed_hosts=trusted_hosts)
+    app.add_middleware(TrustedHostWithCORSMiddleware, allowed_hosts=trusted_hosts)
 
 app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
@@ -122,17 +134,23 @@ async def general_exception_handler(request, exc):
 
 
 @app.options("/{full_path:path}", include_in_schema=False)
-async def preflight_handler(full_path: str):
-    return JSONResponse(
+async def preflight_handler(request, full_path: str):
+    origin = request.headers.get("origin", "*")
+    allowed = any(origin.endswith(o.replace("https://", "").replace("http://", "")) for o in allowed_origins)
+    cors_origin = origin if allowed else allowed_origins[0] if allowed_origins else "*"
+    
+    response = JSONResponse(
         status_code=200,
-        content={"status": "ok"},
+        content={},
         headers={
-            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Origin": cors_origin,
             "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
             "Access-Control-Allow-Headers": "Authorization, Content-Type, X-Requested-With, Accept",
+            "Access-Control-Allow-Credentials": "true",
             "Access-Control-Max-Age": "86400",
         }
     )
+    return response
 
 
 @app.on_event("startup")
