@@ -130,6 +130,8 @@ class ApiClient {
       const response = await fetch(url, {
         ...options,
         headers,
+        credentials: "include",
+        mode: "cors",
       });
 
       if (!response.ok) {
@@ -233,6 +235,8 @@ export const trainingAPI = {
       method: "POST",
       headers,
       body: formData,
+      credentials: "include",
+      mode: "cors",
     });
 
     if (!response.ok) {
@@ -263,6 +267,8 @@ export const trainingAPI = {
       method: "POST",
       headers,
       body: formData,
+      credentials: "include",
+      mode: "cors",
     });
 
     if (!response.ok) {
@@ -328,6 +334,8 @@ export const smartTaskAPI = {
       method: "POST",
       headers,
       body: JSON.stringify(input),
+      credentials: "include",
+      mode: "cors",
     });
 
     if (!response.ok) {
@@ -362,6 +370,8 @@ export const smartTaskAPI = {
         action: "analyze",
         challenges,
       }),
+      credentials: "include",
+      mode: "cors",
     });
 
     if (!response.ok) {
@@ -393,6 +403,8 @@ export const smartTaskAPI = {
         concept,
         depth: depth || "detailed",
       }),
+      credentials: "include",
+      mode: "cors",
     });
 
     if (!response.ok) {
