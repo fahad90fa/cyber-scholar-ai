@@ -8,7 +8,7 @@ const corsHeaders = {
 
 const verifyAdminToken = (token: string | null): boolean => {
   if (!token) {
-    console.log('No token provided');
+    console.log('No token provided'); 
     return false;
   }
   const adminPassword = Deno.env.get('ADMIN_PASSWORD');
@@ -55,7 +55,7 @@ serve(async (req) => {
       );
     }
 
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabase = createClient(supabaseUrl, supabaseKey); 
 
     const url = new URL(req.url);
     const userId = url.searchParams.get('userId');

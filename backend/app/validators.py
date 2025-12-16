@@ -70,13 +70,33 @@ class ValidatedUserCreate(BaseModel):
     
     @field_validator('username')
     def validate_username(cls, v):
-        if not UsernameValidator.validate_username(v):
-            raise ValueError("Username must be 3-32 characters and contain only letters, numbers, underscores, or hyphens")
+        if not v:
+            raise ValueError("Username is required")
+        if len(v) < 3:
+            raise ValueError("Username must be at least 3 characters")
+        if len(v) > 32:
+            raise ValueError("Username must not exceed 32 characters")
+        if not re.match(r'^[a-zA-Z0-9_-]+$', v):
+            raise ValueError("Username can only contain letters, numbers, underscores, or hyphens")
         return v
     
     @field_validator('password')
     def validate_password(cls, v):
-        is_valid, message = PasswordValidator.validate_password(v)
-        if not is_valid:
-            raise ValueError(message)
+        errors = []
+        
+        if len(v) < 8:
+            errors.append("at least 8 characters")
+        if not re.search(r'[A-Z]', v):
+            errors.append("at least one uppercase letter")
+        if not re.search(r'[a-z]', v):
+            errors.append("at least one lowercase letter")
+        if not re.search(r'[0-9]', v):
+            errors.append("at least one digit")
+        if not re.search(r'[!@#$%^&*(),.?":{}|<>]', v):
+            errors.append("at least one special character: !@#$%^&*()")
+        
+        if errors:
+            msg = "Password must contain " + " and ".join(errors)
+            raise ValueError(msg)
+        
         return v

@@ -6,7 +6,7 @@ from functools import lru_cache
 class Settings(BaseSettings):
     PROJECT_NAME: str = "CyberScholar AI"
     PROJECT_VERSION: str = "1.0.0"
-    API_V1_STR: str = "/api/v1"
+    API_V1_STR: str = "/api/v1" 
     
     GOOGLE_API_KEY: str
     GEMINI_MODEL: str = "gemini-2.5-flash-lite"
@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     ADMIN_PASSWORD: str = ""
     
     ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:5173,http://localhost:8080,https://cyber-scholar-ai.vercel.app"
-    ENVIRONMENT: str = "development"
+    ENVIRONMENT: str = "development" 
     
     def __init__(self, **data):
         super().__init__(**data)
@@ -36,7 +36,7 @@ class Settings(BaseSettings):
         if is_serverless or self.ENVIRONMENT != "development":
             self.CHROMA_PERSIST_DIR = "/tmp/chroma_data"
             self.UPLOAD_DIR = "/tmp/uploads"
-            self.DATABASE_URL = "sqlite:////tmp/cyber_scholar.db"
+            self.DATABASE_URL = "sqlite:////tmp/cyber_scholar.db"  
     
     @staticmethod
     def _is_serverless_environment() -> bool:

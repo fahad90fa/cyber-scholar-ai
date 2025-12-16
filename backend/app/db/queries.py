@@ -113,14 +113,6 @@ class PaymentQueries:
     @staticmethod
     async def create_payment_request(user_id: str, plan_id: str, plan_name: str, billing_cycle: str, amount: int):
         try:
-            profile_check = supabase.table("profiles").select("id").eq("id", user_id).execute()
-            if not profile_check.data:
-                supabase.table("profiles").insert({
-                    "id": user_id,
-                    "email": f"user-{user_id}@app.local",
-                    "full_name": "User"
-                }).execute()
-            
             expires_at = datetime.utcnow() + timedelta(days=7)
             result = supabase.table("payment_requests").insert({
                 "user_id": user_id,

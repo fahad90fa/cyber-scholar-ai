@@ -68,6 +68,12 @@ async def set_password(
     current_user: User = Depends(security.get_current_user),
     db: Session = Depends(get_db),
 ):
+    if req.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Unauthorized: cannot modify other users' security settings"
+        )
+    
     if not is_strong_password(req.password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -104,11 +110,15 @@ async def set_password(
             db.commit()
         except Exception as db_error:
             db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to save password: {str(db_error)}"
+            )
 
         try:
             supabase.table("profiles").update({
                 "chat_security_enabled": True,
-            }).eq("id", req.user_id).execute()
+            }).eq("id", current_user.id).execute()
         except Exception as supabase_err:
             print(f"Warning: Failed to update Supabase profile: {supabase_err}")
 
@@ -245,7 +255,7 @@ async def change_password(
         try:
             supabase.table("profiles").update({
                 "chat_password_set_at": datetime.utcnow().isoformat(),
-            }).eq("id", req.user_id).execute()
+            }).eq("id", current_user.id).execute()
         except Exception as supabase_err:
             print(f"Warning: Failed to update Supabase profile: {supabase_err}")
 
@@ -306,7 +316,7 @@ async def disable_security(
                 "chat_password_salt": None,
                 "chat_security_hint": None,
                 "chat_password_set_at": None,
-            }).eq("id", req.user_id).execute()
+            }).eq("id", current_user.id).execute()
         except Exception as supabase_err:
             print(f"Warning: Failed to update Supabase profile: {supabase_err}")
 

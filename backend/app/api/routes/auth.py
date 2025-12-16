@@ -57,6 +57,7 @@ async def register(user_data: ValidatedUserCreate, db: Session = Depends(get_db)
         
         hashed_password = security.get_password_hash(user_data.password)
         
+        
         new_user = User(
             id=supabase_user.user.id,
             email=user_data.email.lower(),
@@ -183,67 +184,23 @@ async def verify_token(current_user: User = Depends(security.get_current_user)):
 
 
 @router.get("/profile")
+@router.post("/init-profile")
 async def get_profile(current_user: User = Depends(security.get_current_user)):
     try:
         profile = supabase.table('profiles').select('*').eq('id', str(current_user.id)).execute()
         if profile.data and len(profile.data) > 0:
             return profile.data[0]
-        return {
-            "id": str(current_user.id),
-            "email": current_user.email,
-            "subscription_tier": "free",
-            "subscription_status": "active",
-            "tokens_total": 20,
-            "tokens_used": 0,
-            "bonus_tokens": 0,
-            "created_at": datetime.now().isoformat(),
-            "updated_at": datetime.now().isoformat()
-        }
     except Exception as e:
-        logger.error(f"Error fetching profile: {str(e)}")
-        return {
-            "id": str(current_user.id),
-            "email": current_user.email,
-            "subscription_tier": "free",
-            "subscription_status": "active",
-            "tokens_total": 20,
-            "tokens_used": 0,
-            "bonus_tokens": 0,
-            "created_at": datetime.now().isoformat(),
-            "updated_at": datetime.now().isoformat()
-        }
-
-
-@router.post("/init-profile")
-async def init_profile(current_user: User = Depends(security.get_current_user)):
-    try:
-        profile_data = {
-            "id": str(current_user.id),
-            "email": current_user.email,
-            "subscription_tier": "free",
-            "subscription_status": "active",
-            "tokens_total": 20,
-            "tokens_used": 0,
-            "bonus_tokens": 0,
-            "created_at": datetime.now().isoformat(),
-            "updated_at": datetime.now().isoformat()
-        }
-        
-        result = supabase.table('profiles').upsert(profile_data).execute()
-        
-        if result.data:
-            return result.data[0]
-        return profile_data
-    except Exception as e:
-        logger.error(f"Error initializing profile: {str(e)}")
-        return {
-            "id": str(current_user.id),
-            "email": current_user.email,
-            "subscription_tier": "free",
-            "subscription_status": "active",
-            "tokens_total": 20,
-            "tokens_used": 0,
-            "bonus_tokens": 0,
-            "created_at": datetime.now().isoformat(),
-            "updated_at": datetime.now().isoformat()
-        }
+        logger.warning(f"Could not fetch profile from Supabase: {str(e)}")
+    
+    return {
+        "id": str(current_user.id),
+        "email": current_user.email,
+        "subscription_tier": "free",
+        "subscription_status": "active",
+        "tokens_total": 20,
+        "tokens_used": 0,
+        "bonus_tokens": 0,
+        "created_at": datetime.now().isoformat(),
+        "updated_at": datetime.now().isoformat()
+    }

@@ -4,7 +4,7 @@ import { useAuthContext } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { Shield } from 'lucide-react';
+import { Shield, Check, X } from 'lucide-react';
 
 interface AuthPageProps {
   initialMode?: "login" | "register";
@@ -18,6 +18,16 @@ const AuthPage: React.FC<AuthPageProps> = ({ initialMode = "login" }) => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { isAuthenticated, login, register } = useAuthContext();
+  
+  const passwordRequirements = {
+    length: password.length >= 8,
+    uppercase: /[A-Z]/.test(password),
+    lowercase: /[a-z]/.test(password),
+    number: /[0-9]/.test(password),
+    special: /[!@#$%^&*(),.?":{}|<>]/.test(password),
+  };
+  
+  const isPasswordValid = Object.values(passwordRequirements).every(Boolean);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -85,7 +95,31 @@ const AuthPage: React.FC<AuthPageProps> = ({ initialMode = "login" }) => {
             minLength={8}
             disabled={loading}
           />
-          <Button type="submit" disabled={loading} className="w-full">
+          {!isLogin && password && (
+            <div className="space-y-2 text-sm">
+              <div className={`flex items-center gap-2 ${passwordRequirements.length ? 'text-green-600' : 'text-red-600'}`}>
+                {passwordRequirements.length ? <Check size={14} /> : <X size={14} />}
+                At least 8 characters
+              </div>
+              <div className={`flex items-center gap-2 ${passwordRequirements.uppercase ? 'text-green-600' : 'text-red-600'}`}>
+                {passwordRequirements.uppercase ? <Check size={14} /> : <X size={14} />}
+                One uppercase letter (A-Z)
+              </div>
+              <div className={`flex items-center gap-2 ${passwordRequirements.lowercase ? 'text-green-600' : 'text-red-600'}`}>
+                {passwordRequirements.lowercase ? <Check size={14} /> : <X size={14} />}
+                One lowercase letter (a-z)
+              </div>
+              <div className={`flex items-center gap-2 ${passwordRequirements.number ? 'text-green-600' : 'text-red-600'}`}>
+                {passwordRequirements.number ? <Check size={14} /> : <X size={14} />}
+                One number (0-9)
+              </div>
+              <div className={`flex items-center gap-2 ${passwordRequirements.special ? 'text-green-600' : 'text-red-600'}`}>
+                {passwordRequirements.special ? <Check size={14} /> : <X size={14} />}
+                One special character (!@#$%^&*())
+              </div>
+            </div>
+          )}
+          <Button type="submit" disabled={loading || (!isLogin && !isPasswordValid)} className="w-full">
             {loading ? 'Processing...' : isLogin ? 'Login' : 'Sign Up'}
           </Button>
           <button 
