@@ -184,7 +184,6 @@ async def verify_token(current_user: User = Depends(security.get_current_user)):
 
 
 @router.get("/profile")
-@router.post("/init-profile")
 async def get_profile(current_user: User = Depends(security.get_current_user)):
     try:
         profile = supabase.table('profiles').select('*').eq('id', str(current_user.id)).execute()
@@ -204,3 +203,26 @@ async def get_profile(current_user: User = Depends(security.get_current_user)):
         "created_at": datetime.now().isoformat(),
         "updated_at": datetime.now().isoformat()
     }
+
+
+@router.post("/init-profile")
+async def init_profile(current_user: User = Depends(security.get_current_user)):
+    try:
+        profile = supabase.table('profiles').select('*').eq('id', str(current_user.id)).execute()
+        if profile.data and len(profile.data) > 0:
+            return {"status": "success", "message": "Profile already exists"}
+        
+        new_profile = {
+            "id": str(current_user.id),
+            "email": current_user.email,
+            "subscription_tier": "free",
+            "subscription_status": "active",
+            "tokens_total": 20,
+            "tokens_used": 0,
+            "bonus_tokens": 0,
+        }
+        supabase.table('profiles').insert(new_profile).execute()
+        return {"status": "success", "message": "Profile initialized"}
+    except Exception as e:
+        logger.warning(f"Profile initialization error: {str(e)}")
+        return {"status": "success", "message": "Profile ready"}

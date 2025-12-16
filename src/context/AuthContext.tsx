@@ -64,13 +64,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     const response = await authAPI.register(email, username, password) as AuthResponse;
     apiClient.setToken(response.access_token);
     setUser(response.user);
-    
-    try {
-      await new Promise(resolve => setTimeout(resolve, 100));
-      await apiClient.post('/auth/init-profile');
-    } catch (error) {
-      console.warn("Profile initialization not critical:", error);
-    }
   };
 
   const logout = () => {
