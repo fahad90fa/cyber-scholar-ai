@@ -97,20 +97,14 @@ export const useSubscription = (): SubscriptionState & { refetchSubscription: ()
   };
 
   useEffect(() => {
-    const initProfileIfNeeded = async () => {
+    const retryProfileFetch = async () => {
       if (user?.id && profile === null && !profileLoading && !isInitializing) {
         setIsInitializing(true);
         try {
-          await apiClient.post('/auth/init-profile');
           await new Promise(resolve => setTimeout(resolve, 500));
           await refetchProfile();
         } catch (error: any) {
-          const errorMsg = error?.message || String(error);
-          if (errorMsg.includes('23503') || errorMsg.includes('foreign key constraint')) {
-            console.debug("Profile sync skipped - user not fully synced to Supabase yet");
-          } else {
-            console.debug("Profile initialization info:", errorMsg);
-          }
+          console.debug("Profile fetch retry info:", error?.message || String(error));
         } finally {
           setIsInitializing(false);
         }
@@ -118,7 +112,7 @@ export const useSubscription = (): SubscriptionState & { refetchSubscription: ()
     };
 
     if (user?.id) {
-      initProfileIfNeeded();
+      retryProfileFetch();
     }
   }, [user?.id, profile, profileLoading, refetchProfile, isInitializing]);
 
