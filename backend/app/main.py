@@ -54,34 +54,49 @@ cors_config = {
 }
 
 app.add_middleware(CORSMiddleware, **cors_config)
-
-# Add AuthMiddleware
 app.add_middleware(AuthMiddleware)
+app.add_middleware(RateLimitMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(RequestLoggingMiddleware)
 
 if settings.ENVIRONMENT == "production":
     from starlette.middleware.base import BaseHTTPMiddleware
     
-    class TrustedHostWithCORSMiddleware(BaseHTTPMiddleware):
+    class ProductionSecurityMiddleware(BaseHTTPMiddleware):
         def __init__(self, app, allowed_hosts):
             super().__init__(app)
-            self.trusted_host_middleware = TrustedHostMiddleware(app, allowed_hosts=allowed_hosts)
+            self.allowed_hosts = allowed_hosts
         
         async def dispatch(self, request, call_next):
             if request.method == "OPTIONS":
                 return await call_next(request)
-            return await self.trusted_host_middleware.dispatch(request, call_next)
+            
+            host = request.headers.get("host", "")
+            
+            is_allowed = any(
+                host == allowed or 
+                host.endswith("." + allowed) or
+                host.endswith(allowed) or
+                allowed.startswith("*") and host.endswith(allowed[2:])
+                for allowed in self.allowed_hosts
+            )
+            
+            if not is_allowed:
+                logger.warning(f"Blocked request from unauthorized host: {host}, allowed: {self.allowed_hosts}")
+                from fastapi.responses import JSONResponse
+                return JSONResponse({"detail": "Forbidden host"}, status_code=403)
+            
+            return await call_next(request)
     
     trusted_hosts = [origin.replace("http://", "").replace("https://", "") for origin in allowed_origins]
     trusted_hosts.extend([
         "backend-six-gamma-93.vercel.app",
-        "*.vercel.app"
+        "*.vercel.app",
+        "localhost",
+        "127.0.0.1"
     ])
     logger.info(f"Trusted hosts: {trusted_hosts}")
-    app.add_middleware(TrustedHostWithCORSMiddleware, allowed_hosts=trusted_hosts)
-
-app.add_middleware(RequestLoggingMiddleware)
-app.add_middleware(SecurityHeadersMiddleware)
-app.add_middleware(RateLimitMiddleware)
+    app.add_middleware(ProductionSecurityMiddleware, allowed_hosts=trusted_hosts)
 
 
 @app.exception_handler(RequestValidationError)
@@ -135,19 +150,36 @@ async def general_exception_handler(request, exc):
 
 @app.options("/{full_path:path}", include_in_schema=False)
 async def preflight_handler(request, full_path: str):
-    origin = request.headers.get("origin", "*")
-    allowed = any(origin.endswith(o.replace("https://", "").replace("http://", "")) for o in allowed_origins)
-    cors_origin = origin if allowed else allowed_origins[0] if allowed_origins else "*"
+    origin = request.headers.get("origin", "")
+    requested_method = request.headers.get("access-control-request-method", "")
+    
+    logger.info(f"CORS Preflight: origin={origin}, path=/{full_path}, method={requested_method}")
+    
+    if not origin:
+        origin = "*"
+    else:
+        origin_host = origin.replace("https://", "").replace("http://", "").split(":")[0]
+        allowed = any(
+            o.replace("https://", "").replace("http://", "").split(":")[0] == origin_host 
+            for o in allowed_origins
+        )
+        if not allowed:
+            logger.warning(f"CORS: Rejecting origin {origin}, allowed: {allowed_origins}")
+            origin = "*"
+        else:
+            logger.debug(f"CORS: Accepting origin {origin}")
     
     response = JSONResponse(
         status_code=200,
         content={},
         headers={
-            "Access-Control-Allow-Origin": cors_origin,
+            "Access-Control-Allow-Origin": origin,
             "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
-            "Access-Control-Allow-Headers": "Authorization, Content-Type, X-Requested-With, Accept",
+            "Access-Control-Allow-Headers": "Authorization, Content-Type, X-Requested-With, Accept, Accept-Language",
             "Access-Control-Allow-Credentials": "true",
             "Access-Control-Max-Age": "86400",
+            "Vary": "Origin",
+            "Cache-Control": "public, max-age=86400",
         }
     )
     return response
