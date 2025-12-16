@@ -40,7 +40,7 @@ export function useTrainingChat() {
       return
     }
 
-    const systemMessage = "Give ONLY code, CLI commands and deployment instructions. I dont want any explanation or details."
+    const systemMessage = "Give ONLY advance , breafily and detailed code, CLI commands and deployment instructions. I dont want any explanation or details."
     const displayContent = `${content.trim()}\n\n(system_message)`
     const backendContent = `${content.trim()}\n\nIMPORTANT: ${systemMessage}`
 

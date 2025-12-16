@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from datetime import timedelta, datetime
 from datetime import timedelta as td
@@ -190,25 +190,25 @@ async def verify_token(current_user: User = Depends(security.get_current_user)):
 
 
 @router.get("/profile")
-async def get_profile(current_user: User = Depends(security.get_current_user)):
+async def get_profile(request: Request):
     try:
-        profile = supabase.table('profiles').select('*').eq('id', str(current_user.id)).execute()
+        user_id = request.state.user["sub"]
+    except AttributeError:
+        # Fallback if middleware didn't run (shouldn't happen if configured correctly)
+        raise HTTPException(status_code=401, detail="Authentication required")
+        
+    try:
+        # Use existing supabase client which is already initialized with service key
+        profile = supabase.table('profiles').select('*').eq('id', user_id).execute()
         if profile.data and len(profile.data) > 0:
             return profile.data[0]
+        
+        raise HTTPException(status_code=404, detail="Profile not found")
+    except HTTPException:
+        raise
     except Exception as e:
         logger.warning(f"Could not fetch profile from Supabase: {str(e)}")
-    
-    return {
-        "id": str(current_user.id),
-        "email": current_user.email,
-        "subscription_tier": "free",
-        "subscription_status": "active",
-        "tokens_total": 20,
-        "tokens_used": 0,
-        "bonus_tokens": 0,
-        "created_at": datetime.now().isoformat(),
-        "updated_at": datetime.now().isoformat()
-    }
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/init-profile")

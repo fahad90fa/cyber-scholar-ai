@@ -16,6 +16,8 @@ settings = get_settings()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+from app.middleware.auth import AuthMiddleware
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.PROJECT_VERSION,
@@ -35,6 +37,10 @@ if not any(origin.startswith("http://localhost") for origin in allowed_origins):
         "http://localhost:8081",
     ])
 
+# Ensure the frontend URL is in allowed_origins
+if "https://cyber-scholar-ai.vercel.app" not in allowed_origins:
+    allowed_origins.append("https://cyber-scholar-ai.vercel.app")
+
 logger.info(f"CORS allowed origins: {allowed_origins}")
 logger.info(f"Running in {settings.ENVIRONMENT} mode")
 
@@ -43,10 +49,13 @@ app.add_middleware(
     allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["Authorization", "Content-Type", "*"],
     expose_headers=["Content-Type", "Authorization"],
     max_age=86400,
 )
+
+# Add AuthMiddleware
+app.add_middleware(AuthMiddleware)
 
 if settings.ENVIRONMENT == "production":
     trusted_hosts = [origin.replace("http://", "").replace("https://", "") for origin in allowed_origins]

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, status, Header
+from fastapi import APIRouter, HTTPException, Depends, status, Header, Request
 from pydantic import BaseModel
 from typing import Optional
 from app.db.queries import SubscriptionQueries, PaymentQueries, TokenQueries, BankSettingsQueries
@@ -67,9 +67,14 @@ async def get_subscription_plan(slug: str):
 
 
 @router.get("/subscriptions/current")
-async def get_current_subscription(current_user: User = Depends(get_current_user)):
-    subscription = await SubscriptionQueries.get_user_subscription(current_user.id)
-    return subscription
+async def get_current_subscription(request: Request):
+    try:
+        user_id = request.state.user["sub"]
+    except AttributeError:
+        raise HTTPException(status_code=401, detail="Authentication required")
+        
+    subscription = await SubscriptionQueries.get_user_subscription(user_id)
+    return subscription if subscription else {"plan": "free"}
 
 
 @router.get("/subscriptions/history")
@@ -100,7 +105,9 @@ async def create_payment_request(payload: PaymentRequestCreate, current_user: Us
 @router.post("/payment-requests/{payment_id}/submit")
 async def submit_payment_proof(payment_id: str, payload: PaymentProofSubmit, current_user: User = Depends(get_current_user)):
     payment = await PaymentQueries.get_payment_request(payment_id)
-    if payment["user_id"] != current_user.id:
+    
+    # Compare user_ids safely (handle case sensitivity)
+    if str(payment["user_id"]).lower() != str(current_user.id).lower():
         raise HTTPException(status_code=403, detail="Forbidden")
     
     updated = await PaymentQueries.submit_payment_proof(
@@ -125,15 +132,22 @@ async def get_user_payment_requests(current_user: User = Depends(get_current_use
 @router.get("/payment-requests/{payment_id}")
 async def get_payment_request(payment_id: str, current_user: User = Depends(get_current_user)):
     payment = await PaymentQueries.get_payment_request(payment_id)
-    if payment["user_id"] != current_user.id:
+    
+    # Compare user_ids safely (handle case sensitivity)
+    if str(payment["user_id"]).lower() != str(current_user.id).lower():
         raise HTTPException(status_code=403, detail="Forbidden")
     
     return payment
 
 
 @router.get("/tokens/balance")
-async def get_token_balance(current_user: User = Depends(get_current_user)):
-    tokens = await TokenQueries.get_user_tokens(current_user.id)
+async def get_token_balance(request: Request):
+    try:
+        user_id = request.state.user["sub"]
+    except AttributeError:
+        raise HTTPException(status_code=401, detail="Authentication required")
+        
+    tokens = await TokenQueries.get_user_tokens(user_id)
     return tokens
 
 

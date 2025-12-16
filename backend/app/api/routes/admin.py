@@ -263,39 +263,67 @@ async def list_payments(
 
 @router.post("/payments/{payment_id}/confirm", dependencies=[Depends(verify_admin_token)])
 async def confirm_payment(payment_id: str, payload: PaymentConfirmRequest):
-    payment = await PaymentQueries.confirm_payment(payment_id, payload.notes)
-    
-    plan = await SubscriptionQueries.get_plan_by_id(payment["plan_id"])
-    subscription = await SubscriptionQueries.create_subscription(
-        user_id=payment["user_id"],
-        plan_id=payment["plan_id"],
-        plan_name=payment["plan_name"],
-        billing_cycle=payment["billing_cycle"],
-        price_paid=payment["amount"],
-        tokens_total=plan["tokens_per_month"]
-    )
-    
-    profile_update = await AdminQueries.update_user(payment["user_id"], {
-        "subscription_tier": plan["slug"],
-        "subscription_status": "active",
-        "subscription_id": subscription["id"],
-        "tokens_total": plan["tokens_per_month"]
-    })
-    
-    if not profile_update:
-        print(f"Warning: Failed to update profile for user {payment['user_id']}")
+    try:
+        # 1. Confirm the payment request
+        payment = await PaymentQueries.confirm_payment(payment_id, payload.notes)
+        if not payment:
+            raise HTTPException(status_code=404, detail="Payment request not found or could not be updated")
+        
+        # 2. Get the plan details
         try:
-            supabase.table("profiles").update({
-                "subscription_tier": plan["slug"],
-                "subscription_status": "active",
-                "subscription_id": subscription["id"],
-                "tokens_total": plan["tokens_per_month"]
-            }).eq("id", payment["user_id"]).execute()
-            print(f"Fallback profile update succeeded for user {payment['user_id']}")
+            plan = await SubscriptionQueries.get_plan_by_id(payment["plan_id"])
         except Exception as e:
-            print(f"Error updating profile: {str(e)}")
-    
-    return payment
+            # If plan not found, we might want to revert the payment confirmation or just error out
+            print(f"Error fetching plan {payment.get('plan_id')}: {str(e)}")
+            raise HTTPException(status_code=404, detail=f"Subscription plan not found: {payment.get('plan_id')}")
+        
+        if not plan:
+             raise HTTPException(status_code=404, detail="Subscription plan not found")
+
+        # 3. Create the subscription
+        subscription = await SubscriptionQueries.create_subscription(
+            user_id=payment["user_id"],
+            plan_id=payment["plan_id"],
+            plan_name=payment["plan_name"],
+            billing_cycle=payment["billing_cycle"],
+            price_paid=payment["amount"],
+            tokens_total=plan["tokens_per_month"]
+        )
+        
+        if not subscription:
+            raise HTTPException(status_code=500, detail="Failed to create subscription record")
+        
+        # 4. Update user profile
+        profile_update = await AdminQueries.update_user(payment["user_id"], {
+            "subscription_tier": plan["slug"],
+            "subscription_status": "active",
+            "subscription_id": subscription["id"],
+            "tokens_total": plan["tokens_per_month"]
+        })
+        
+        if not profile_update:
+            print(f"Warning: Failed to update profile for user {payment['user_id']}")
+            try:
+                supabase.table("profiles").update({
+                    "subscription_tier": plan["slug"],
+                    "subscription_status": "active",
+                    "subscription_id": subscription["id"],
+                    "tokens_total": plan["tokens_per_month"]
+                }).eq("id", payment["user_id"]).execute()
+                print(f"Fallback profile update succeeded for user {payment['user_id']}")
+            except Exception as e:
+                print(f"Error updating profile: {str(e)}")
+                # We don't raise here to avoid rolling back the payment/subscription, but we log it
+        
+        return payment
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Unhandled error in confirm_payment: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
 @router.post("/payments/{payment_id}/reject", dependencies=[Depends(verify_admin_token)])

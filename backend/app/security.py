@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Header
 from fastapi.security import HTTPBearer
 from fastapi.security.http import HTTPAuthorizationCredentials
 from app.config import get_settings
@@ -40,17 +40,30 @@ def decode_token(token: str) -> dict:
     import logging
     logger = logging.getLogger(__name__)
     
-    try:
-        payload = jwt.decode(token, settings.SUPABASE_JWT_SECRET, algorithms=["HS256"])
-        logger.debug("Token decoded successfully with SUPABASE_JWT_SECRET")
-        return payload
-    except JWTError as e:
-        logger.debug(f"SUPABASE_JWT_SECRET decode failed: {str(e)}")
-    except Exception as e:
-        logger.debug(f"Error decoding with SUPABASE_JWT_SECRET: {str(e)}")
+    # Try Supabase JWT Secret first (primary for Supabase auth)
+    if settings.SUPABASE_JWT_SECRET:
+        try:
+            payload = jwt.decode(
+                token, 
+                settings.SUPABASE_JWT_SECRET, 
+                algorithms=["HS256"],
+                options={"verify_aud": False}
+            )
+            logger.debug("Token decoded successfully with SUPABASE_JWT_SECRET")
+            return payload
+        except JWTError as e:
+            logger.debug(f"SUPABASE_JWT_SECRET decode failed: {str(e)}")
+        except Exception as e:
+            logger.debug(f"Error decoding with SUPABASE_JWT_SECRET: {str(e)}")
     
+    # Fallback to local SECRET_KEY
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        payload = jwt.decode(
+            token, 
+            settings.SECRET_KEY, 
+            algorithms=[settings.ALGORITHM],
+            options={"verify_aud": False}
+        )
         logger.debug("Token decoded successfully with SECRET_KEY")
         return payload
     except JWTError as e:
@@ -60,6 +73,19 @@ def decode_token(token: str) -> dict:
     
     logger.warning("Failed to decode token with configured secrets")
     return None
+
+
+async def get_jwt_payload(authorization: str = Header(None)) -> dict:
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=403, detail="Missing or invalid token")
+    
+    token = authorization.split(" ")[1]
+    payload = decode_token(token)
+    
+    if not payload:
+        raise HTTPException(status_code=403, detail="Invalid or expired token")
+        
+    return payload
 
 
 async def get_current_user(
