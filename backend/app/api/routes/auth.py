@@ -7,6 +7,7 @@ from app.models import User
 from app import schemas, security
 from app.config import get_settings
 from app.core.supabase_client import supabase
+from app.core.mac_manager import MACManager
 from app.validators import (
     EmailValidator, UsernameValidator, PasswordValidator, 
     InputSanitizer, ValidatedUserCreate
@@ -75,6 +76,10 @@ async def register(user_data: ValidatedUserCreate, db: Session = Depends(get_db)
         
         access_token = supabase_user.session.access_token if supabase_user.session else security.create_access_token(data={"sub": new_user.id})
         
+        mac_binding = await MACManager.capture_and_bind_mac(new_user.id)
+        if not mac_binding:
+            logger.warning(f"MAC capture failed for new user {new_user.id}")
+        
         return {
             "access_token": access_token,
             "token_type": "bearer",
@@ -139,6 +144,10 @@ async def login(credentials: schemas.UserLogin, db: Session = Depends(get_db)):
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="User account is inactive"
             )
+        
+        mac_binding = await MACManager.capture_and_bind_mac(user.id)
+        if not mac_binding:
+            logger.warning(f"MAC capture failed for user {user.id} during login")
         
         access_token = supabase_user.session.access_token
         

@@ -28,6 +28,8 @@ class Settings(BaseSettings):
     SUPABASE_JWT_SECRET: str = ""
     ADMIN_PASSWORD: str = ""
     
+    MAC_VERIFICATION_KEY: str = Field(default="mac-verification-secret")
+    
     ALLOWED_ORIGINS: str = Field(
         default="http://localhost:3000,http://localhost:5173,http://localhost:8080,http://localhost:8081,https://cyber-scholar-ai.vercel.app"
     )

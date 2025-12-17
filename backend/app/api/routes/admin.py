@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from typing import Optional
 from app.db.queries import AdminQueries, SubscriptionQueries, PaymentQueries, TokenQueries, BankSettingsQueries
 from app.api.dependencies.admin_auth import verify_admin_token
+from app.core.mac_manager import MACManager
 from datetime import datetime, timedelta
 from app.core.supabase_client import supabase
 
@@ -469,3 +470,114 @@ async def update_token_config(payload: TokenCostUpdate):
     except Exception as e:
         print(f"Error updating token config: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to update token config: {str(e)}")
+
+
+# MAC Address Management Endpoints
+@router.get("/info/mac-bindings", dependencies=[Depends(verify_admin_token)])
+async def get_all_mac_bindings(
+    limit: int = Query(100, ge=1, le=1000),
+    offset: int = Query(0, ge=0)
+):
+    """Get all MAC address bindings across all users"""
+    try:
+        response = supabase.table("mac_address_bindings").select(
+            "*,profiles!inner(id,email,username)"
+        ).order("created_at", desc=True).range(offset, offset + limit - 1).execute()
+        
+        if response.data:
+            return {
+                "count": len(response.data),
+                "bindings": response.data,
+                "limit": limit,
+                "offset": offset
+            }
+        return {"count": 0, "bindings": []}
+    except Exception as e:
+        print(f"Error fetching MAC bindings: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to fetch MAC bindings")
+
+
+@router.get("/info/mac-bindings/{user_id}", dependencies=[Depends(verify_admin_token)])
+async def get_user_mac_bindings(user_id: str):
+    """Get all MAC bindings for a specific user"""
+    try:
+        bindings = await MACManager.get_user_bindings(user_id)
+        verification_log = await MACManager.get_verification_log(user_id, limit=50)
+        
+        return {
+            "user_id": user_id,
+            "bindings": bindings,
+            "verification_log": verification_log
+        }
+    except Exception as e:
+        print(f"Error fetching user MAC bindings: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to fetch user MAC bindings")
+
+
+@router.post("/info/mac-bindings/{binding_id}/deactivate", dependencies=[Depends(verify_admin_token)])
+async def deactivate_mac_binding(binding_id: str):
+    """Deactivate a MAC binding (force user to re-authenticate)"""
+    try:
+        success = await MACManager.deactivate_binding(binding_id)
+        if success:
+            return {"success": True, "message": "MAC binding deactivated. User will need to re-authenticate."}
+        raise HTTPException(status_code=404, detail="MAC binding not found")
+    except Exception as e:
+        print(f"Error deactivating MAC binding: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to deactivate MAC binding")
+
+
+@router.get("/info/mac-verification-log", dependencies=[Depends(verify_admin_token)])
+async def get_mac_verification_log(
+    status_filter: Optional[str] = Query(None, description="success or failed"),
+    limit: int = Query(100, ge=1, le=1000),
+    offset: int = Query(0, ge=0)
+):
+    """Get MAC verification log for all users"""
+    try:
+        query = supabase.table("mac_verification_log").select("*").order("created_at", desc=True)
+        
+        if status_filter:
+            query = query.eq("verification_status", status_filter)
+        
+        response = query.range(offset, offset + limit - 1).execute()
+        
+        return {
+            "count": len(response.data) if response.data else 0,
+            "logs": response.data or [],
+            "limit": limit,
+            "offset": offset
+        }
+    except Exception as e:
+        print(f"Error fetching MAC verification log: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to fetch verification log")
+
+
+@router.get("/info/mac-stats", dependencies=[Depends(verify_admin_token)])
+async def get_mac_statistics():
+    """Get MAC address binding statistics"""
+    try:
+        bindings = supabase.table("mac_address_bindings").select("id,is_active").execute()
+        verification_log = supabase.table("mac_verification_log").select("id,verification_status").execute()
+        
+        total_bindings = len(bindings.data) if bindings.data else 0
+        active_bindings = len([b for b in (bindings.data or []) if b.get("is_active")]) if bindings.data else 0
+        
+        total_verifications = len(verification_log.data) if verification_log.data else 0
+        successful_verifications = len([v for v in (verification_log.data or []) if v.get("verification_status") == "success"]) if verification_log.data else 0
+        failed_verifications = total_verifications - successful_verifications
+        
+        success_rate = (successful_verifications / total_verifications * 100) if total_verifications > 0 else 0
+        
+        return {
+            "total_bindings": total_bindings,
+            "active_bindings": active_bindings,
+            "inactive_bindings": total_bindings - active_bindings,
+            "total_verifications": total_verifications,
+            "successful_verifications": successful_verifications,
+            "failed_verifications": failed_verifications,
+            "success_rate_percent": round(success_rate, 2)
+        }
+    except Exception as e:
+        print(f"Error fetching MAC statistics: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to fetch MAC statistics")

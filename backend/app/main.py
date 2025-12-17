@@ -17,6 +17,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 from app.middleware.auth import AuthMiddleware
+from app.middleware.mac_verification import MACVerificationMiddleware
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -130,6 +131,7 @@ if settings.ENVIRONMENT == "production":
 app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RateLimitMiddleware)
+app.add_middleware(MACVerificationMiddleware)
 app.add_middleware(AuthMiddleware)
 app.add_middleware(CORSMiddleware, **cors_config)
 app.add_middleware(OptionsPreflightMiddleware)

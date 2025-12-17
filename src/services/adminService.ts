@@ -332,6 +332,36 @@ class AdminService {
     const response = await apiClient.put("/admin/settings", data);
     return response;
   }
+
+  // MAC Address Management
+  async getMACBindings(limit: number = 100, offset: number = 0) {
+    const response = await apiClient.get("/admin/info/mac-bindings", true, { limit, offset });
+    return response;
+  }
+
+  async getUserMACBindings(userId: string) {
+    const response = await apiClient.get(`/admin/info/mac-bindings/${userId}`);
+    return response;
+  }
+
+  async deactivateMACBinding(bindingId: string) {
+    const response = await apiClient.post(`/admin/info/mac-bindings/${bindingId}/deactivate`, {});
+    return response;
+  }
+
+  async getMACVerificationLog(statusFilter?: string, limit: number = 100, offset: number = 0) {
+    const params: any = { limit, offset };
+    if (statusFilter) {
+      params.status_filter = statusFilter;
+    }
+    const response = await apiClient.get("/admin/info/mac-verification-log", true, params);
+    return response;
+  }
+
+  async getMACStatistics() {
+    const response = await apiClient.get("/admin/info/mac-stats");
+    return response;
+  }
 }
 
 export const adminService = new AdminService();

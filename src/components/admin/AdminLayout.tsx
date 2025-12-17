@@ -11,6 +11,7 @@ import {
   Menu,
   X,
   Globe,
+  Wifi,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -24,6 +25,7 @@ const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     { icon: LayoutDashboard, label: "Dashboard", href: "/admin" },
     { icon: Users, label: "Users", href: "/admin/users" },
     { icon: Globe, label: "Device & Network", href: "/admin/info" },
+    { icon: Wifi, label: "MAC Management", href: "/admin/mac-management" },
     { icon: CreditCard, label: "Subscriptions", href: "/admin/subscriptions" },
     { icon: Zap, label: "Payments", href: "/admin/payments" },
     { icon: Shield, label: "Plans", href: "/admin/plans" },

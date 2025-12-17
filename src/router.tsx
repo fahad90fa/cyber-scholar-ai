@@ -33,6 +33,7 @@ import AdminTokenPacksPage from "./pages/admin/AdminTokenPacksPage";
 import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
 import AdminInfoPage from "./pages/admin/AdminInfoPage";
 import AdminLogsPage from "./pages/admin/AdminLogsPage";
+import MACManagement from "./pages/admin/MACManagement";
 import AdminProtectedRoute from "./components/admin/AdminProtectedRoute";
 
 const ProtectedLayout = ({ children }: { children: React.ReactNode }) => {
@@ -278,6 +279,14 @@ export const AppRouter = () => {
         element={
           <AdminProtectedRoute>
             <AdminLogsPage />
+          </AdminProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/admin/mac-management" 
+        element={
+          <AdminProtectedRoute>
+            <MACManagement />
           </AdminProtectedRoute>
         } 
       />
