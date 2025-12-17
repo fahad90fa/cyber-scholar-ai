@@ -122,9 +122,10 @@ serve(async (req) => {
       const paymentId = pathSegments[pathSegments.length - 2];
       const action = pathSegments[pathSegments.length - 1];
 
-      if (action === "approve" && paymentId) {
+      if ((action === "approve" || action === "confirm") && paymentId) {
         const body = await req.json();
-        const { admin_notes } = body;
+        const { admin_notes, notes } = body;
+        const finalNotes = admin_notes || notes || "";
         const adminEmail = adminToken || "system";
 
         const { data: paymentRequest, error: fetchError } = await supabase
@@ -141,7 +142,7 @@ serve(async (req) => {
           .from("payment_requests")
           .update({
             status: "confirmed",
-            admin_notes,
+            admin_notes: finalNotes,
             admin_confirmed_at: new Date().toISOString(),
             admin_confirmed_by: adminEmail,
           })
