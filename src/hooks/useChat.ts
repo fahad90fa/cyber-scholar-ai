@@ -27,7 +27,7 @@ export function useChat(moduleContextOrOptions?: string | UseChatOptions) {
   const sendMessage = useCallback(async (content: string) => {
     if (!content.trim()) return;
 
-    const systemMessage = "Give ONLY advance , breafily and detailed code, CLI commands and deployment instructions. I dont want any explanation or details."
+    const systemMessage = "Give ONLY advance , breafily and detailed code, CLI commands and deployment instructions. Atleast give Minimum 10 advance , breafily and detailed code, CLI commands and deployment instructions. I dont want any explanation or details."
     const displayContent = `${content.trim()}\n\n(system_message)`
     const backendContent = `${content.trim()}\n\nIMPORTANT: ${systemMessage}`
 
