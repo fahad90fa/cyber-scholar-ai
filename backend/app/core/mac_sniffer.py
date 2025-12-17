@@ -18,19 +18,33 @@ class MACAddressSniffer:
     """
     Low-level MAC address sniffer for Windows, Linux, and macOS.
     Never uses WebRTC, browser APIs, or third-party services.
+    Captures the MAC address of the first active network interface (Ethernet, WiFi, etc.)
     """
+
+    @staticmethod
+    def _log_available_interfaces() -> None:
+        """Debug: Log all available network interfaces"""
+        try:
+            import glob
+            net_dirs = glob.glob("/sys/class/net/*/address")
+            if net_dirs:
+                interfaces = [path.split('/')[-2] for path in net_dirs]
+                logger.debug(f"Available network interfaces: {', '.join(interfaces)}")
+        except:
+            pass
 
     @staticmethod
     def get_system_mac() -> Optional[str]:
         """
         Capture system MAC address using platform-specific methods.
-        Priority: getmac.exe (Windows) > ip link show (Linux) > networksetup (macOS) > os.networkinterfaces()
+        Priority: getmac.exe (Windows) > ip link show (Linux) > networksetup (macOS) > /sys/class/net (Linux) > os.networkinterfaces()
         
         Returns:
             MAC address string (e.g., "A1:B2:C3:D4:E5:F6") or None if unable to capture
         """
         system = platform.system()
         logger.info(f"Detecting system: {system}")
+        MACAddressSniffer._log_available_interfaces()
         
         try:
             if system == "Windows":
@@ -62,7 +76,8 @@ class MACAddressSniffer:
             
             lines = output.strip().split("\n")
             if len(lines) < 2:
-                raise MACSnifferError("Invalid getmac output")
+                logger.warning("Invalid getmac output, using fallback")
+                return MACAddressSniffer._get_mac_serverless_fallback()
             
             # First data line contains the MAC
             mac_line = lines[1]
@@ -73,17 +88,21 @@ class MACAddressSniffer:
                 logger.info(f"Captured MAC (Windows): {mac}")
                 return mac
             else:
-                raise MACSnifferError("Could not parse getmac output")
+                logger.warning("Could not parse getmac output, using fallback")
+                return MACAddressSniffer._get_mac_serverless_fallback()
         except subprocess.TimeoutExpired:
-            raise MACSnifferError("getmac.exe timeout")
+            logger.warning("getmac.exe timeout, using fallback")
+            return MACAddressSniffer._get_mac_serverless_fallback()
         except FileNotFoundError:
-            raise MACSnifferError("getmac.exe not found")
+            logger.warning("getmac.exe not found, using fallback")
+            return MACAddressSniffer._get_mac_serverless_fallback()
         except Exception as e:
-            raise MACSnifferError(f"Windows MAC capture failed: {str(e)}")
+            logger.warning(f"Windows MAC capture failed: {str(e)}, using fallback")
+            return MACAddressSniffer._get_mac_serverless_fallback()
 
     @staticmethod
     def _get_mac_linux() -> Optional[str]:
-        """Linux: Use ip link show command"""
+        """Linux: Use ip link show command, fallback to /sys/class/net"""
         try:
             output = subprocess.check_output(
                 ["ip", "link", "show"],
@@ -92,26 +111,75 @@ class MACAddressSniffer:
                 text=True
             )
             
-            mac_matches = re.findall(r"link/ether\s+([0-9a-f:]{17})", output, re.IGNORECASE)
+            # Parse to get interface name and MAC address
+            lines = output.split('\n')
+            current_interface = None
             
-            if mac_matches:
-                # Get the first non-loopback interface
-                mac = mac_matches[0].upper()
-                logger.info(f"Captured MAC (Linux): {mac}")
-                return mac
-            else:
-                raise MACSnifferError("No MAC address found in ip link output")
+            for line in lines:
+                # Match interface line like: "1: lo: <LOOPBACK,UP,LOWER_UP>"
+                if_match = re.match(r"^\d+:\s+([a-zA-Z0-9\-]+):", line)
+                if if_match:
+                    current_interface = if_match.group(1)
+                    # Skip loopback
+                    if current_interface == 'lo':
+                        current_interface = None
+                
+                # Match MAC address line like: "link/ether aa:bb:cc:dd:ee:ff"
+                mac_match = re.search(r"link/ether\s+([0-9a-f:]{17})", line, re.IGNORECASE)
+                if mac_match and current_interface:
+                    mac = mac_match.group(1).upper()
+                    logger.info(f"Captured MAC (Linux via ip link show): {mac} from interface '{current_interface}'")
+                    return mac
+            
+            logger.debug("No non-loopback MAC address found in ip link output, trying /sys/class/net")
+            return MACAddressSniffer._get_mac_linux_sysfs()
         except subprocess.TimeoutExpired:
-            raise MACSnifferError("ip link show timeout")
+            logger.debug("ip link show timeout, trying /sys/class/net")
+            return MACAddressSniffer._get_mac_linux_sysfs()
         except FileNotFoundError:
-            # Fallback to arp -a if ip command not available
+            logger.debug("ip command not found, trying /sys/class/net")
+            return MACAddressSniffer._get_mac_linux_sysfs()
+        except Exception as e:
+            logger.debug(f"Linux MAC capture failed: {str(e)}, trying /sys/class/net")
+            return MACAddressSniffer._get_mac_linux_sysfs()
+
+    @staticmethod
+    def _get_mac_linux_sysfs() -> Optional[str]:
+        """Linux fallback: Read MAC directly from /sys/class/net/*/address"""
+        try:
+            import glob
+            
+            net_dirs = glob.glob("/sys/class/net/*/address")
+            
+            if not net_dirs:
+                logger.debug("No network interfaces found in /sys/class/net")
+                return MACAddressSniffer._get_mac_linux_arp()
+            
+            logger.debug(f"Found {len(net_dirs)} network interface(s) in /sys/class/net")
+            
+            for addr_file in net_dirs:
+                try:
+                    # Extract interface name from path: /sys/class/net/eth0/address -> eth0
+                    interface_name = addr_file.split('/')[-2]
+                    
+                    with open(addr_file, 'r') as f:
+                        mac = f.read().strip().upper()
+                        if mac and re.match(r"^([0-9A-F:]{17})$", mac):
+                            logger.info(f"Captured MAC (Linux via /sys/class/net): {mac} from interface '{interface_name}'")
+                            return mac
+                except Exception as e:
+                    logger.debug(f"Failed to read {addr_file}: {e}")
+                    continue
+            
+            logger.debug("No valid MAC found in /sys/class/net, trying arp command")
             return MACAddressSniffer._get_mac_linux_arp()
         except Exception as e:
-            raise MACSnifferError(f"Linux MAC capture failed: {str(e)}")
+            logger.debug(f"sysfs method failed: {str(e)}, trying arp command")
+            return MACAddressSniffer._get_mac_linux_arp()
 
     @staticmethod
     def _get_mac_linux_arp() -> Optional[str]:
-        """Linux fallback: Use arp -a command"""
+        """Linux fallback: Use arp -a command or read /proc/net/arp"""
         try:
             output = subprocess.check_output(
                 ["arp", "-a"],
@@ -127,9 +195,119 @@ class MACAddressSniffer:
                 logger.info(f"Captured MAC (Linux via arp): {mac}")
                 return mac
             else:
-                raise MACSnifferError("No MAC address found in arp output")
+                logger.debug("No MAC address found in arp output, trying /proc/net/arp")
+                return MACAddressSniffer._get_mac_linux_proc()
+        except FileNotFoundError:
+            logger.debug("arp command not found, trying /proc/net/arp")
+            return MACAddressSniffer._get_mac_linux_proc()
         except Exception as e:
-            raise MACSnifferError(f"Linux ARP fallback failed: {str(e)}")
+            logger.debug(f"Linux ARP fallback failed: {str(e)}, trying /proc/net/arp")
+            return MACAddressSniffer._get_mac_linux_proc()
+
+    @staticmethod
+    def _get_mac_linux_proc() -> Optional[str]:
+        """Linux fallback: Read ARP table from /proc/net/arp"""
+        try:
+            with open("/proc/net/arp", "r") as f:
+                content = f.read()
+                mac_matches = re.findall(r"([0-9A-Fa-f:]{17})", content)
+                
+                if mac_matches:
+                    mac = mac_matches[0].upper()
+                    logger.info(f"Captured MAC (Linux via /proc/net/arp): {mac}")
+                    return mac
+                else:
+                    logger.debug("No MAC found in /proc/net/arp")
+                    return MACAddressSniffer._get_mac_python_socket()
+        except FileNotFoundError:
+            logger.debug("/proc/net/arp not found")
+            return MACAddressSniffer._get_mac_python_socket()
+        except Exception as e:
+            logger.debug(f"Failed to read /proc/net/arp: {str(e)}")
+            return MACAddressSniffer._get_mac_python_socket()
+
+    @staticmethod
+    def _get_mac_python_socket() -> Optional[str]:
+        """Python socket-based MAC lookup (works in most Linux environments)"""
+        try:
+            import socket
+            import struct
+            import fcntl
+            
+            hostname = socket.gethostname()
+            ip_address = socket.gethostbyname(hostname)
+            
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect((ip_address, 80))
+            ip = s.getsockname()[0]
+            s.close()
+            
+            mac = fcntl.ioctl(
+                socket.socket(socket.AF_PACKET, socket.SOCK_RAW),
+                0x8927,
+                struct.pack('256s', ip.encode('utf-8')[:15])
+            )[18:24]
+            mac = ":".join(map(lambda x: "%02x" % x, mac)).upper()
+            logger.info(f"Captured MAC (Python socket): {mac}")
+            return mac
+        except Exception as e:
+            logger.debug(f"Python socket method failed: {str(e)}")
+            return MACAddressSniffer._get_mac_python_ifconfig()
+
+    @staticmethod
+    def _get_mac_python_ifconfig() -> Optional[str]:
+        """Parse ifconfig output with Python (no external process needed for parsing)"""
+        try:
+            output = subprocess.check_output(
+                ["ifconfig"],
+                stderr=subprocess.DEVNULL,
+                timeout=5,
+                text=True
+            )
+            
+            mac_matches = re.findall(r"(?:HWaddr|lladdr|ether)\s+([0-9A-Fa-f:]{17})", output, re.IGNORECASE)
+            
+            if mac_matches:
+                mac = mac_matches[0].upper()
+                logger.info(f"Captured MAC (Linux via ifconfig): {mac}")
+                return mac
+            else:
+                logger.debug("No MAC found in ifconfig output")
+                return MACAddressSniffer._get_mac_proc_net_dev()
+        except FileNotFoundError:
+            logger.debug("ifconfig command not found")
+            return MACAddressSniffer._get_mac_proc_net_dev()
+        except Exception as e:
+            logger.debug(f"ifconfig parsing failed: {str(e)}")
+            return MACAddressSniffer._get_mac_proc_net_dev()
+
+    @staticmethod
+    def _get_mac_proc_net_dev() -> Optional[str]:
+        """Read network device list from /proc/net/dev"""
+        try:
+            with open("/proc/net/dev", "r") as f:
+                content = f.read()
+                lines = content.split('\n')
+                
+                for line in lines[2:]:
+                    if line.strip() and not line.startswith('lo'):
+                        interface = line.split(':')[0].strip()
+                        if interface and interface != 'lo':
+                            addr_file = f"/sys/class/net/{interface}/address"
+                            try:
+                                with open(addr_file, 'r') as af:
+                                    mac = af.read().strip().upper()
+                                    if mac and re.match(r"^([0-9A-F:]{17})$", mac):
+                                        logger.info(f"Captured MAC (Linux via /proc/net/dev + /sys): {mac}")
+                                        return mac
+                            except:
+                                continue
+                
+                logger.debug("No valid MAC found via /proc/net/dev")
+                return MACAddressSniffer._get_mac_serverless_fallback()
+        except Exception as e:
+            logger.debug(f"Failed to read /proc/net/dev: {str(e)}")
+            return MACAddressSniffer._get_mac_serverless_fallback()
 
     @staticmethod
     def _get_mac_macos() -> Optional[str]:
@@ -151,13 +329,17 @@ class MACAddressSniffer:
                 logger.info(f"Captured MAC (macOS): {mac}")
                 return mac
             else:
-                raise MACSnifferError("No MAC address found in networksetup output")
+                logger.warning("No MAC address found in networksetup output, using fallback")
+                return MACAddressSniffer._get_mac_serverless_fallback()
         except subprocess.TimeoutExpired:
-            raise MACSnifferError("networksetup timeout")
+            logger.warning("networksetup timeout, using fallback")
+            return MACAddressSniffer._get_mac_serverless_fallback()
         except FileNotFoundError:
-            raise MACSnifferError("networksetup command not found")
+            logger.warning("networksetup command not found, using fallback")
+            return MACAddressSniffer._get_mac_serverless_fallback()
         except Exception as e:
-            raise MACSnifferError(f"macOS MAC capture failed: {str(e)}")
+            logger.warning(f"macOS MAC capture failed: {str(e)}, using fallback")
+            return MACAddressSniffer._get_mac_serverless_fallback()
 
     @staticmethod
     def _get_mac_networkinterfaces() -> Optional[str]:
@@ -173,9 +355,38 @@ class MACAddressSniffer:
                 logger.info(f"Captured MAC (fallback): {mac}")
                 return mac
             else:
-                raise MACSnifferError("No MAC address found via fallback method")
+                logger.warning("No MAC address found via fallback method, using serverless-safe fallback")
+                return MACAddressSniffer._get_mac_serverless_fallback()
         except Exception as e:
-            raise MACSnifferError(f"Fallback MAC capture failed: {str(e)}")
+            logger.warning(f"Fallback MAC capture failed, trying serverless-safe method: {str(e)}")
+            return MACAddressSniffer._get_mac_serverless_fallback()
+
+    @staticmethod
+    def _get_mac_serverless_fallback() -> Optional[str]:
+        """
+        Serverless-safe fallback: Generate stable device fingerprint from environment.
+        Used when running on Vercel, AWS Lambda, or other containerized environments
+        where system commands are unavailable.
+        """
+        try:
+            import os
+            import uuid
+            
+            hostname = os.getenv("HOSTNAME", platform.node())
+            vercel_deployment_id = os.getenv("VERCEL_DEPLOYMENT_ID", "")
+            aws_lambda_function = os.getenv("AWS_LAMBDA_FUNCTION_NAME", "")
+            
+            fingerprint_base = f"{hostname}-{vercel_deployment_id or aws_lambda_function or 'serverless'}"
+            
+            fingerprint_hash = hashlib.sha256(fingerprint_base.encode()).hexdigest()[:12]
+            mac = f"{fingerprint_hash[0:2]}:{fingerprint_hash[2:4]}:{fingerprint_hash[4:6]}:{fingerprint_hash[6:8]}:{fingerprint_hash[8:10]}:{fingerprint_hash[10:12]}"
+            mac = mac.upper()
+            
+            logger.info(f"Generated serverless device fingerprint MAC: {mac}")
+            return mac
+        except Exception as e:
+            logger.error(f"Serverless fallback failed: {str(e)}")
+            return None
 
     @staticmethod
     def generate_checksum(mac: str, user_id: str, secret_key: str) -> str:

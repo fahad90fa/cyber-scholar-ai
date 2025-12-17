@@ -581,3 +581,44 @@ async def get_mac_statistics():
     except Exception as e:
         print(f"Error fetching MAC statistics: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to fetch MAC statistics")
+
+
+@router.get("/debug/mac-test", dependencies=[Depends(verify_admin_token)])
+async def debug_mac_test():
+    """Debug endpoint to test MAC capture functionality"""
+    import platform
+    from app.core.mac_sniffer import MACAddressSniffer
+    from app.config import get_settings
+    
+    settings = get_settings()
+    
+    debug_info = {
+        "system": platform.system(),
+        "environment": settings.ENVIRONMENT,
+        "supabase_configured": bool(settings.SUPABASE_URL and settings.SUPABASE_SERVICE_KEY),
+        "supabase_url": settings.SUPABASE_URL[:50] + "..." if settings.SUPABASE_URL else "NOT SET",
+        "mac_verification_key_set": bool(settings.MAC_VERIFICATION_KEY),
+    }
+    
+    mac = MACAddressSniffer.get_system_mac()
+    debug_info["mac_captured"] = mac is not None
+    debug_info["mac_address"] = mac if mac else "FAILED"
+    
+    if mac:
+        checksum = MACAddressSniffer.generate_checksum(
+            mac, "test-user", settings.MAC_VERIFICATION_KEY or "default"
+        )
+        debug_info["checksum_generated"] = True
+        debug_info["checksum_sample"] = checksum[:20] + "..."
+    else:
+        debug_info["checksum_generated"] = False
+    
+    try:
+        test_response = supabase.table("mac_address_bindings").select("id").limit(1).execute()
+        debug_info["supabase_accessible"] = True
+        debug_info["total_bindings"] = len(test_response.data) if test_response.data else 0
+    except Exception as e:
+        debug_info["supabase_accessible"] = False
+        debug_info["supabase_error"] = str(e)[:100]
+    
+    return debug_info

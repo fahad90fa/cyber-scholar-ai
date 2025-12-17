@@ -101,10 +101,7 @@ export default function MACManagement() {
     return new Date(dateString).toLocaleString();
   };
 
-  const maskMACAddress = (mac: string) => {
-    const parts = mac.split(':');
-    return `${parts[0]}:${parts[1]}:${parts[2]}:**:**:***`;
-  };
+
 
   return (
     <div className="space-y-6">
@@ -223,7 +220,7 @@ export default function MACManagement() {
                           </TableCell>
                           <TableCell>
                             <code className="text-xs bg-muted px-2 py-1 rounded">
-                              {maskMACAddress(binding.mac_address)}
+                              {binding.mac_address}
                             </code>
                           </TableCell>
                           <TableCell className="text-sm">
@@ -321,12 +318,12 @@ export default function MACManagement() {
                           </TableCell>
                           <TableCell>
                             <code className="text-xs bg-muted px-2 py-1 rounded">
-                              {log.mac_address ? maskMACAddress(log.mac_address) : 'N/A'}
+                              {log.mac_address ? log.mac_address : 'N/A'}
                             </code>
                           </TableCell>
                           <TableCell>
                             <code className="text-xs bg-muted px-2 py-1 rounded">
-                              {log.expected_mac ? maskMACAddress(log.expected_mac) : 'N/A'}
+                              {log.expected_mac ? log.expected_mac : 'N/A'}
                             </code>
                           </TableCell>
                           <TableCell className="text-sm">
@@ -366,7 +363,7 @@ export default function MACManagement() {
               <p className="text-sm">
                 <span className="font-medium">MAC Address:</span>{' '}
                 <code className="bg-muted px-2 py-1 rounded text-xs">
-                  {maskMACAddress(selectedBinding.mac_address)}
+                  {selectedBinding.mac_address}
                 </code>
               </p>
             </div>

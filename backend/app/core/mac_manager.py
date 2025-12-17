@@ -30,19 +30,40 @@ class MACManager:
             HTTPException with 403 if MAC cannot be captured
         """
         try:
+            logger.info(f"Starting MAC capture for user {user_id}")
             mac = MACAddressSniffer.get_system_mac()
             
             if not mac:
                 logger.error(f"Failed to capture MAC for user {user_id}: No MAC address detected")
+                logger.error(f"System platform: {platform.system()}, Node: {platform.node()}")
                 raise MACSnifferError("Unable to capture system MAC address")
             
             secret_key = settings.MAC_VERIFICATION_KEY or "default-secret"
             checksum = MACAddressSniffer.generate_checksum(mac, user_id, secret_key)
+            logger.info(f"MAC captured for user {user_id}: {mac}")
             
             device_os = platform.system()
             device_name = platform.node()
             
             try:
+                try:
+                    profile = supabase.table("profiles").select("id").eq("id", user_id).limit(1).execute()
+                    logger.info(f"Profile lookup for user {user_id}: found={bool(profile.data)}")
+                    if not profile.data:
+                        logger.warning(f"Profile missing for user {user_id}, creating default profile")
+                        profile_response = supabase.table("profiles").insert({
+                            "id": user_id,
+                            "subscription_tier": "free",
+                            "subscription_status": "active",
+                            "tokens_total": 20,
+                            "tokens_used": 0
+                        }).execute()
+                        logger.info(f"Created default profile for user {user_id}: response={bool(profile_response.data)}")
+                    else:
+                        logger.info(f"Profile already exists for user {user_id}")
+                except Exception as profile_error:
+                    logger.warning(f"Could not ensure profile exists for user {user_id}: {type(profile_error).__name__}: {str(profile_error)}")
+                
                 existing = await MACManager.get_active_binding(user_id)
                 
                 if existing:
@@ -54,7 +75,8 @@ class MACManager:
                         "device_name": device_name,
                         "last_seen": "now()",
                         "is_active": True
-                    }).eq("id", existing["id"]).select().execute()
+                    }).eq("id", existing["id"]).execute()
+                    logger.info(f"Update response for user {user_id}: {response.data is not None}")
                 else:
                     logger.info(f"Creating new MAC binding for user {user_id}")
                     response = supabase.table("mac_address_bindings").insert({
@@ -64,11 +86,12 @@ class MACManager:
                         "device_os": device_os,
                         "device_name": device_name,
                         "is_active": True
-                    }).select().execute()
+                    }).execute()
+                    logger.info(f"Insert response for user {user_id}: {response.data is not None}")
                 
                 if response.data:
                     binding = response.data[0]
-                    logger.info(f"MAC binding successful for user {user_id}")
+                    logger.info(f"MAC binding successful for user {user_id}: binding_id={binding.get('id')}")
                     return {
                         "mac": mac,
                         "checksum": checksum,
@@ -77,11 +100,13 @@ class MACManager:
                         "binding_id": binding.get("id")
                     }
                 else:
-                    logger.error(f"Failed to store MAC binding in database for user {user_id}")
+                    logger.error(f"Failed to store MAC binding in database for user {user_id}: response.data is empty")
                     return None
                     
             except Exception as db_error:
-                logger.error(f"Database error during MAC binding for user {user_id}: {str(db_error)}")
+                logger.error(f"Database error during MAC binding for user {user_id}: {type(db_error).__name__}: {str(db_error)}")
+                import traceback
+                logger.error(f"Database error traceback: {traceback.format_exc()}")
                 return None
                 
         except MACSnifferError as e:
@@ -119,13 +144,15 @@ class MACManager:
         Returns:
             Dict with verification status and details
         """
+        logger.info(f"Starting MAC verification for user {user_id}")
         try:
             binding = await MACManager.get_active_binding(user_id)
+            logger.info(f"Active binding lookup for user {user_id}: found={bool(binding)}")
             
             if not binding:
                 logger.warning(f"No active MAC binding found for user {user_id}")
                 await MACManager._log_verification(
-                    user_id, None, None, "failed", False, ip_address, user_agent,
+                    user_id, None, None, None, False, ip_address, user_agent,
                     "No active binding found"
                 )
                 return {
@@ -134,7 +161,10 @@ class MACManager:
                     "message": "No MAC binding found for user"
                 }
             
+            logger.info(f"Found binding for user {user_id}: binding_id={binding.get('id')}")
+            
             current_mac = MACAddressSniffer.get_system_mac()
+            logger.info(f"Current MAC captured for user {user_id}: {current_mac}")
             
             if not current_mac:
                 logger.error(f"Failed to capture MAC for verification for user {user_id}")
@@ -149,6 +179,8 @@ class MACManager:
                 }
             
             secret_key = settings.MAC_VERIFICATION_KEY or "default-secret"
+            logger.info(f"Verifying MAC for user {user_id}: current={current_mac}, stored={binding['mac_address']}")
+            
             is_valid = MACAddressSniffer.verify_mac(
                 current_mac,
                 binding["mac_address"],
@@ -156,17 +188,21 @@ class MACManager:
                 user_id,
                 secret_key
             )
+            logger.info(f"MAC verification result for user {user_id}: valid={is_valid}")
             
             if is_valid:
                 try:
+                    logger.info(f"Updating verification count for user {user_id}")
                     supabase.table("mac_address_bindings").update({
                         "last_verified": "now()",
                         "last_seen": "now()",
                         "verification_count": binding.get("verification_count", 0) + 1
                     }).eq("id", binding["id"]).execute()
+                    logger.info(f"Verification count updated for user {user_id}")
                 except Exception as e:
-                    logger.error(f"Error updating verification count: {str(e)}")
+                    logger.error(f"Error updating verification count for user {user_id}: {str(e)}")
                 
+                logger.info(f"Logging successful verification for user {user_id}")
                 await MACManager._log_verification(
                     user_id, binding.get("id"), current_mac, binding["mac_address"],
                     True, ip_address, user_agent
@@ -186,6 +222,7 @@ class MACManager:
                 except Exception as e:
                     logger.error(f"Error updating failure count: {str(e)}")
                 
+                logger.info(f"Logging failed verification for user {user_id}")
                 await MACManager._log_verification(
                     user_id, binding.get("id"), current_mac, binding["mac_address"],
                     False, ip_address, user_agent, "MAC mismatch"
@@ -211,7 +248,7 @@ class MACManager:
                                user_agent: str = None, error_message: str = None):
         """Log MAC verification attempt"""
         try:
-            supabase.table("mac_verification_log").insert({
+            log_entry = {
                 "user_id": user_id,
                 "binding_id": binding_id,
                 "mac_address": mac_address,
@@ -221,9 +258,14 @@ class MACManager:
                 "ip_address": ip_address,
                 "user_agent": user_agent,
                 "error_message": error_message
-            }).execute()
+            }
+            logger.debug(f"Logging verification for user {user_id}: {log_entry}")
+            response = supabase.table("mac_verification_log").insert(log_entry).execute()
+            logger.info(f"Verification logged for user {user_id}: status={'success' if success else 'failed'}")
         except Exception as e:
-            logger.error(f"Error logging verification for user {user_id}: {str(e)}")
+            logger.error(f"Error logging verification for user {user_id}: {type(e).__name__}: {str(e)}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
 
     @staticmethod
     async def get_user_bindings(user_id: str) -> list:

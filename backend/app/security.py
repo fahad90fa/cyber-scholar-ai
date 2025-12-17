@@ -75,6 +75,35 @@ def decode_token(token: str) -> dict:
     return None
 
 
+def get_current_user_id_from_request(request) -> Optional[str]:
+    """
+    Extract user_id from request headers (for middleware use).
+    
+    Args:
+        request: FastAPI Request object
+        
+    Returns:
+        User ID (UUID) if found and valid, None otherwise
+    """
+    try:
+        authorization = request.headers.get("Authorization", "")
+        if not authorization or not authorization.startswith("Bearer "):
+            return None
+        
+        token = authorization.split(" ")[1]
+        payload = decode_token(token)
+        
+        if payload is None:
+            return None
+        
+        user_id = payload.get("sub")
+        return user_id
+    except Exception as e:
+        logger = logging.getLogger(__name__)
+        logger.debug(f"Error extracting user_id from request: {str(e)}")
+        return None
+
+
 async def get_jwt_payload(authorization: str = Header(None)) -> dict:
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=403, detail="Missing or invalid token")
