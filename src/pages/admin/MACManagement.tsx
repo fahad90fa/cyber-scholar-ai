@@ -70,11 +70,11 @@ export default function MACManagement() {
         adminService.getMACBindings(100, 0),
         adminService.getMACStatistics(),
         adminService.getMACVerificationLog(undefined, 50, 0)
-      ]);
+      ]) as [any, MACStats, any];
       
-      setBindings(bindingsData.bindings || []);
+      setBindings(bindingsData?.bindings || []);
       setStats(statsData);
-      setVerificationLog(logData.logs || []);
+      setVerificationLog(logData?.logs || []);
     } catch (error) {
       console.error('Failed to load MAC data:', error);
       toast.error('Failed to load MAC management data');

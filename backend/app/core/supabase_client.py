@@ -1,4 +1,3 @@
-from supabase import create_client
 from app.config import get_settings
 from app.core.mock_supabase import MockSupabaseClient
 import logging
@@ -10,6 +9,12 @@ settings = get_settings()
 supabase = None
 
 try:
+    try:
+        from supabase import create_client
+    except ImportError:
+        logger.warning("Supabase library not installed, will use mock client")
+        raise ImportError("supabase library not available")
+    
     if not settings.SUPABASE_URL:
         raise ValueError("SUPABASE_URL is not configured")
     if not settings.SUPABASE_SERVICE_KEY:
