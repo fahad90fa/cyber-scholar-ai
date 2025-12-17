@@ -27,7 +27,7 @@ app = FastAPI(
     openapi_url="/openapi.json" if settings.ENVIRONMENT == "development" else None,
 )
 
-allowed_origins = [origin.strip() for origin in settings.ALLOWED_ORIGINS.split(",")]
+allowed_origins = [origin.strip() for origin in settings.ALLOWED_ORIGINS.split(",") if origin.strip()]
 
 if not any(origin.startswith("http://localhost") for origin in allowed_origins):
     allowed_origins.extend([
@@ -41,23 +41,53 @@ if not any(origin.startswith("http://localhost") for origin in allowed_origins):
 if "https://cyber-scholar-ai.vercel.app" not in allowed_origins:
     allowed_origins.append("https://cyber-scholar-ai.vercel.app")
 
-logger.info(f"CORS allowed origins: {allowed_origins}")
+logger.info(f"=== CORS Configuration ===")
+logger.info(f"Environment: {settings.ENVIRONMENT}")
+logger.info(f"ALLOWED_ORIGINS config: {settings.ALLOWED_ORIGINS}")
+logger.info(f"Parsed origins: {allowed_origins}")
+logger.info(f"===========================")
 logger.info(f"Running in {settings.ENVIRONMENT} mode")
 
 cors_config = {
     "allow_origins": allowed_origins,
     "allow_credentials": True,
     "allow_methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    "allow_headers": ["Authorization", "Content-Type", "X-Requested-With", "Accept"],
+    "allow_headers": ["*"],
     "expose_headers": ["Content-Type", "Authorization"],
     "max_age": 86400,
 }
 
-app.add_middleware(CORSMiddleware, **cors_config)
-app.add_middleware(AuthMiddleware)
-app.add_middleware(RateLimitMiddleware)
-app.add_middleware(SecurityHeadersMiddleware)
-app.add_middleware(RequestLoggingMiddleware)
+from starlette.middleware.base import BaseHTTPMiddleware
+
+class OptionsPreflightMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        if request.method == "OPTIONS":
+            origin = request.headers.get("origin", "")
+            if not origin:
+                origin = "*"
+            else:
+                origin_host = origin.replace("https://", "").replace("http://", "").split(":")[0]
+                is_allowed = any(
+                    o.replace("https://", "").replace("http://", "").split(":")[0] == origin_host
+                    for o in allowed_origins
+                )
+                if not is_allowed:
+                    origin = allowed_origins[0] if allowed_origins else "*"
+                    logger.warning(f"CORS: Origin {request.headers.get('origin')} not in allowed list")
+            
+            logger.info(f"Preflight request to {request.url.path} from {origin}")
+            return JSONResponse(
+                status_code=200,
+                content={},
+                headers={
+                    "Access-Control-Allow-Origin": origin,
+                    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
+                    "Access-Control-Allow-Headers": request.headers.get("access-control-request-headers", "*"),
+                    "Access-Control-Allow-Credentials": "true",
+                    "Access-Control-Max-Age": "86400",
+                }
+            )
+        return await call_next(request)
 
 if settings.ENVIRONMENT == "production":
     from starlette.middleware.base import BaseHTTPMiddleware
@@ -97,6 +127,13 @@ if settings.ENVIRONMENT == "production":
     logger.info(f"Trusted hosts: {trusted_hosts}")
     app.add_middleware(ProductionSecurityMiddleware, allowed_hosts=trusted_hosts)
 
+app.add_middleware(RequestLoggingMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(RateLimitMiddleware)
+app.add_middleware(AuthMiddleware)
+app.add_middleware(CORSMiddleware, **cors_config)
+app.add_middleware(OptionsPreflightMiddleware)
+
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request, exc):
@@ -123,7 +160,7 @@ async def validation_exception_handler(request, exc):
             "Access-Control-Allow-Origin": cors_origin,
             "Access-Control-Allow-Credentials": "true",
             "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type, Authorization",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization, Referrer-Policy",
         }
     )
 
@@ -142,46 +179,12 @@ async def general_exception_handler(request, exc):
             "Access-Control-Allow-Origin": cors_origin,
             "Access-Control-Allow-Credentials": "true",
             "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type, Authorization",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization, Referrer-Policy",
         }
     )
 
 
-@app.options("/{full_path:path}", include_in_schema=False)
-async def preflight_handler(request, full_path: str):
-    origin = request.headers.get("origin", "")
-    requested_method = request.headers.get("access-control-request-method", "")
-    
-    logger.info(f"CORS Preflight: origin={origin}, path=/{full_path}, method={requested_method}")
-    
-    if not origin:
-        origin = "*"
-    else:
-        origin_host = origin.replace("https://", "").replace("http://", "").split(":")[0]
-        allowed = any(
-            o.replace("https://", "").replace("http://", "").split(":")[0] == origin_host 
-            for o in allowed_origins
-        )
-        if not allowed:
-            logger.warning(f"CORS: Rejecting origin {origin}, allowed: {allowed_origins}")
-            origin = "*"
-        else:
-            logger.debug(f"CORS: Accepting origin {origin}")
-    
-    response = JSONResponse(
-        status_code=200,
-        content={},
-        headers={
-            "Access-Control-Allow-Origin": origin,
-            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
-            "Access-Control-Allow-Headers": "Authorization, Content-Type, X-Requested-With, Accept, Accept-Language",
-            "Access-Control-Allow-Credentials": "true",
-            "Access-Control-Max-Age": "86400",
-            "Vary": "Origin",
-            "Cache-Control": "public, max-age=86400",
-        }
-    )
-    return response
+
 
 
 @app.on_event("startup")

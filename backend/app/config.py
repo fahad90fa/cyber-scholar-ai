@@ -1,5 +1,6 @@
 import os
 from pydantic_settings import BaseSettings
+from pydantic import Field
 from functools import lru_cache
 
 
@@ -27,8 +28,10 @@ class Settings(BaseSettings):
     SUPABASE_JWT_SECRET: str = ""
     ADMIN_PASSWORD: str = ""
     
-    ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:5173,http://localhost:8080,https://cyber-scholar-ai.vercel.app,https://cyber-Scholar-ai.vercel.app"
-    ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development") 
+    ALLOWED_ORIGINS: str = Field(
+        default="http://localhost:3000,http://localhost:5173,http://localhost:8080,http://localhost:8081,https://cyber-scholar-ai.vercel.app"
+    )
+    ENVIRONMENT: str = Field(default="development") 
     
     def __init__(self, **data):
         super().__init__(**data)
@@ -59,6 +62,11 @@ class Settings(BaseSettings):
 @lru_cache()
 def get_settings():
     settings = Settings()
+    
     if not settings.ADMIN_PASSWORD:
         raise ValueError("ADMIN_PASSWORD environment variable must be set")
+    
+    print(f"[CONFIG] ENVIRONMENT={settings.ENVIRONMENT}")
+    print(f"[CONFIG] ALLOWED_ORIGINS={settings.ALLOWED_ORIGINS}")
+    
     return settings
