@@ -118,6 +118,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ initialMode = "login" }) => {
                 One special character (!@#$%^&*())
               </div>
             </div>
+            
           )}
           <Button type="submit" disabled={loading || (!isLogin && !isPasswordValid)} className="w-full">
             {loading ? 'Processing...' : isLogin ? 'Login' : 'Sign Up'}
