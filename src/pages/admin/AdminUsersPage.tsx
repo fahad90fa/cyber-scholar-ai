@@ -57,30 +57,9 @@ const AdminUsersPage = () => {
   useEffect(() => {
     const fetchPlans = async () => {
       try {
-        const adminToken = localStorage.getItem("admin_token");
-        if (!adminToken) {
-          console.warn("No admin token found");
-          setPlansLoading(false);
-          return;
-        }
-        
-        const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
-        
-        const response = await fetch(`${apiUrl}/api/v1/admin/plans`, {
-          headers: {
-            "Authorization": `Bearer ${adminToken}`,
-          },
-        });
-        
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error("Plans fetch failed:", response.status, errorText);
-          setPlansLoading(false);
-          return;
-        }
-        
-        const data = await response.json();
-        setPlans(data);
+        setPlansLoading(true);
+        const data = await adminService.getPlans();
+        setPlans(data as any[]);
       } catch (error) {
         console.error("Failed to fetch plans:", error);
       } finally {
@@ -203,7 +182,13 @@ const AdminUsersPage = () => {
     }
 
     try {
+      if (isBanned) {
+        await adminService.unbanUser(userId);
+      } else {
+        await adminService.banUser(userId, "Violated terms of service");
+      }
       toast.success(isBanned ? "User unbanned" : "User banned");
+      invalidateUsers();
     } catch (error: any) {
       toast.error(error.message || "Failed to update user");
     }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { adminService } from '@/services/adminService';
 
 interface UseAdminUsersRealtimeParams {
   search?: string;
@@ -28,47 +29,15 @@ export const useAdminUsersRealtime = ({
     queryKey: ['admin', 'users', { search, tier, status, page, limit, sortBy, sortOrder }],
     queryFn: async () => {
       const offset = (page - 1) * limit;
-      const params = new URLSearchParams({
-        limit: limit.toString(),
-        offset: offset.toString(),
+      return adminService.getUsers({
+        search,
+        tier,
+        status,
+        limit,
+        offset,
         sortBy,
         sortOrder,
       });
-
-      if (search) params.append('search', search);
-      if (tier && tier !== 'all') params.append('tier', tier);
-      if (status && status !== 'all') params.append('status', status);
-
-      const adminToken = localStorage.getItem('admin_token');
-      if (!adminToken) {
-        throw new Error('Admin token not found');
-      }
-
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-users?${params.toString()}`,
-        {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-            'x-admin-token': adminToken,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch users: ${response.statusText}`);
-      }
-
-      const paginatedUsers = await response.json();
-
-      return {
-        users: paginatedUsers || [],
-        total: paginatedUsers?.length || 0,
-        page,
-        limit,
-        totalPages: Math.ceil((paginatedUsers?.length || 0) / limit),
-      };
     },
     staleTime: 5000,
   });

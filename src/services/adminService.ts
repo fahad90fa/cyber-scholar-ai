@@ -40,6 +40,31 @@ export interface AdminPayment {
   transaction_reference: string;
   payment_date: string;
   created_at: string;
+  billing_cycle: string;
+  currency: string;
+  payment_screenshot_url?: string;
+  profiles?: {
+    full_name: string;
+    email: string;
+  };
+}
+
+export interface AdminSubscription {
+  id: string;
+  user_id: string;
+  plan_id: string;
+  plan_name: string;
+  billing_cycle: string;
+  price_paid: number;
+  tokens_total: number;
+  tokens_used: number;
+  status: string;
+  started_at: string;
+  expires_at: string;
+  profiles?: {
+    full_name: string;
+    email: string;
+  };
 }
 
 class AdminService {
@@ -76,9 +101,22 @@ class AdminService {
     status?: string;
     limit?: number;
     offset?: number;
-  }) {
-    const response = await apiClient.get("/admin/users", true, params);
-    return response;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+  }): Promise<{ users: AdminUser[]; total: number; totalPages: number }> {
+    const response = await apiClient.get<any>("/admin/users", true, params);
+    
+    // If backend doesn't return total/totalPages yet, we estimate or adapt
+    // Assuming backend returns an array of users directly for now based on AdminQueries.get_all_users
+    const users = Array.isArray(response) ? response : (response.users || []);
+    const total = response.total || users.length;
+    const limit = params?.limit || 10;
+    
+    return {
+      users,
+      total: total,
+      totalPages: response.totalPages || Math.ceil(total / limit)
+    };
   }
 
   async getUser(id: string) {
@@ -138,9 +176,17 @@ class AdminService {
     status?: string;
     limit?: number;
     offset?: number;
-  }) {
-    const response = await apiClient.get("/admin/subscriptions", true, params);
-    return response;
+  }): Promise<{ subscriptions: AdminSubscription[]; total: number; totalPages: number }> {
+    const response = await apiClient.get<any>("/admin/subscriptions", true, params);
+    const subscriptions = Array.isArray(response) ? response : (response.subscriptions || []);
+    const total = response.total || subscriptions.length;
+    const limit = params?.limit || 10;
+    
+    return {
+      subscriptions,
+      total,
+      totalPages: response.totalPages || Math.ceil(total / limit)
+    };
   }
 
   async getSubscription(id: string) {
@@ -187,9 +233,17 @@ class AdminService {
     user_id?: string;
     limit?: number;
     offset?: number;
-  }): Promise<AdminPayment[]> {
-    const response = await apiClient.get<AdminPayment[]>("/admin/payments", true, params);
-    return response;
+  }): Promise<{ payments: AdminPayment[]; total: number; totalPages: number }> {
+    const response = await apiClient.get<any>("/admin/payments", true, params);
+    const payments = Array.isArray(response) ? response : (response.payments || []);
+    const total = response.total || payments.length;
+    const limit = params?.limit || 10;
+    
+    return {
+      payments,
+      total,
+      totalPages: response.totalPages || Math.ceil(total / limit)
+    };
   }
 
   async confirmPayment(paymentId: string, notes?: string) {

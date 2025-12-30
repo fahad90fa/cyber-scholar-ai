@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAdminPlansRealtime } from "@/hooks/useAdminPlansRealtime";
+import { adminService } from "@/services/adminService";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -19,10 +20,14 @@ import AdminLayout from "@/components/admin/AdminLayout";
 import { Plus, Edit2, Trash2, Star } from "lucide-react";
 
 const AdminPlansPage = () => {
-  const { plans, isLoading, isSubscribed } = useAdminPlansRealtime();
+  const { plans, isLoading, isSubscribed, refetch } = useAdminPlansRealtime();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const loadPlans = () => {
+    refetch();
+  };
 
   const [formData, setFormData] = useState({
     name: "",
@@ -70,8 +75,8 @@ const AdminPlansPage = () => {
       name: plan.name,
       slug: plan.slug,
       description: plan.description || "",
-      monthly_price: plan.monthly_price.toString(),
-      yearly_price: plan.yearly_price.toString(),
+      monthly_price: (plan.monthly_price / 100).toString(),
+      yearly_price: (plan.yearly_price / 100).toString(),
       tokens_per_month: plan.tokens_per_month.toString(),
       features: plan.features || [],
       is_active: plan.is_active,
@@ -110,8 +115,8 @@ const AdminPlansPage = () => {
 
       const planData = {
         ...formData,
-        monthly_price: parseInt(formData.monthly_price) || 0,
-        yearly_price: parseInt(formData.yearly_price) || 0,
+        monthly_price: Math.round(parseFloat(formData.monthly_price) * 100) || 0,
+        yearly_price: Math.round(parseFloat(formData.yearly_price) * 100) || 0,
         tokens_per_month: parseInt(formData.tokens_per_month) || 0,
         sort_order: parseInt(formData.sort_order) || 0,
       };

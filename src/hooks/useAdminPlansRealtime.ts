@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { adminService } from '@/services/adminService';
 
 export const useAdminPlansRealtime = () => {
   const queryClient = useQueryClient();
@@ -9,16 +10,7 @@ export const useAdminPlansRealtime = () => {
   const { data: plans = [], isLoading, error, refetch } = useQuery({
     queryKey: ['admin', 'plans'],
     queryFn: async () => {
-      const response = await supabase
-        .from('subscription_plans')
-        .select('*')
-        .order('sort_order', { ascending: true });
-
-      if (response.error) {
-        throw new Error(response.error.message);
-      }
-
-      return response.data || [];
+      return adminService.getPlans();
     },
     staleTime: 5000,
   });

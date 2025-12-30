@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { adminService } from '@/services/adminService';
 
 interface UseAdminSubscriptionsRealtimeParams {
   plan?: string;
@@ -21,42 +22,13 @@ export const useAdminSubscriptionsRealtime = ({
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['admin', 'subscriptions', { plan, status, page, limit }],
     queryFn: async () => {
-      const adminToken = localStorage.getItem('admin_token');
-      if (!adminToken) {
-        throw new Error('Admin token not found');
-      }
-
-      const response = await supabase
-        .from('subscriptions')
-        .select('*', { count: 'exact' })
-        .order('created_at', { ascending: false });
-
-      if (response.error) {
-        throw new Error(response.error.message);
-      }
-
-      const subscriptions = response.data || [];
-      
-      let filtered = [...subscriptions];
-      
-      if (plan && plan !== 'all') {
-        filtered = filtered.filter(s => s.plan_name?.toLowerCase().includes(plan.toLowerCase()));
-      }
-      
-      if (status && status !== 'all') {
-        filtered = filtered.filter(s => s.status === status);
-      }
-
       const offset = (page - 1) * limit;
-      const paginatedData = filtered.slice(offset, offset + limit);
-
-      return {
-        subscriptions: paginatedData,
-        total: filtered.length,
-        page,
+      return adminService.getSubscriptions({
+        plan,
+        status,
         limit,
-        totalPages: Math.ceil(filtered.length / limit),
-      };
+        offset,
+      });
     },
     staleTime: 5000,
   });
