@@ -1,12 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuthContext } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Shield, Mail, Terminal, Lock } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 
 const EmailVerificationPage = () => {
   const { user, logout } = useAuthContext();
   const [isResending, setIsResending] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // If user is already verified, send them to dashboard
+    if (user?.is_verified) {
+      navigate('/dashboard');
+    }
+  }, [user, navigate]);
 
   const handleResend = async () => {
     setIsResending(true);

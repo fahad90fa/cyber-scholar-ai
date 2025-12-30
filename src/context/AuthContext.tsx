@@ -35,6 +35,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   useEffect(() => {
     const initAuth = async () => {
       try {
+        // Check for access_token in the URL hash (Supabase redirect)
+        const hash = window.location.hash;
+        if (hash && hash.includes("access_token=")) {
+          const params = new URLSearchParams(hash.substring(1));
+          const accessToken = params.get("access_token");
+          if (accessToken) {
+            apiClient.setToken(accessToken);
+            // Clear the hash from the URL
+            window.history.replaceState(null, "", window.location.pathname);
+          }
+        }
+
         const token = apiClient.getToken();
         if (token) {
           const userData = await authAPI.getCurrentUser();
