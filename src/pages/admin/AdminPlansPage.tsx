@@ -142,8 +142,12 @@ const AdminPlansPage = () => {
     if (!window.confirm("Are you sure you want to delete this plan?")) return;
 
     try {
-      await adminService.deletePlan(planId);
-      toast.success("Plan deleted successfully");
+      const response: any = await adminService.deletePlan(planId);
+      if (response && response.status === "Plan deactivated (in use)") {
+        toast.info("Plan is in use and has been deactivated instead of deleted");
+      } else {
+        toast.success("Plan deleted successfully");
+      }
       loadPlans();
     } catch (error: any) {
       toast.error(error.message || "Failed to delete plan");

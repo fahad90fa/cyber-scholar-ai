@@ -279,6 +279,7 @@ class AdminService {
     features: string[];
     is_popular?: boolean;
     is_enterprise?: boolean;
+    sort_order?: number;
   }) {
     const response = await apiClient.post("/admin/plans", data);
     return response;
@@ -288,6 +289,7 @@ class AdminService {
     planId: string,
     data: {
       name?: string;
+      slug?: string;
       description?: string;
       monthly_price?: number;
       yearly_price?: number;
@@ -295,6 +297,8 @@ class AdminService {
       features?: string[];
       is_popular?: boolean;
       is_active?: boolean;
+      is_enterprise?: boolean;
+      sort_order?: number;
     }
   ) {
     const response = await apiClient.put(`/admin/plans/${planId}`, data);
