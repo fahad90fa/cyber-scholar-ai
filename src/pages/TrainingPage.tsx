@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { AlertCircle } from "lucide-react";
+import { TokenBalance } from "@/components/chat/TokenBalance";
 import { DocumentUpload } from "@/components/training/DocumentUpload";
 import { DocumentList } from "@/components/training/DocumentList";
 
@@ -14,11 +15,14 @@ const TrainingPage = () => {
   return (
     <MainLayout>
       {/* Header */}
-      <header className="px-6 py-4 border-b border-border bg-card/30 backdrop-blur-sm">
-        <h1 className="text-lg font-semibold text-foreground">Training Data</h1>
-        <p className="text-sm text-muted-foreground">
-          Upload documents to enhance AI knowledge with your custom content
-        </p>
+      <header className="px-6 py-4 border-b border-border bg-card/30 backdrop-blur-sm flex items-center justify-between">
+        <div>
+          <h1 className="text-lg font-semibold text-foreground">Training Data</h1>
+          <p className="text-sm text-muted-foreground">
+            Upload documents to enhance AI knowledge with your custom content
+          </p>
+        </div>
+        <TokenBalance />
       </header>
 
       <div className="flex-1 overflow-y-auto p-6">

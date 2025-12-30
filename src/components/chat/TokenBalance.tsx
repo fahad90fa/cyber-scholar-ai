@@ -36,7 +36,7 @@ export function TokenBalance() {
         variant="outline"
         size="sm"
         onClick={() => setShowDetails(!showDetails)}
-        className={`gap-2 ${isLowTokens ? "border-red-400/50 text-red-400" : ""}`}
+        className={`gap-2 border-primary/50 bg-transparent text-primary hover:bg-primary/10 hover:border-primary hover:shadow-[0_0_15px_hsl(var(--primary)/0.3)] transition-all duration-200 ${isLowTokens ? "border-red-400/50 text-red-400 hover:text-red-400 hover:border-red-400" : ""}`}
       >
         <Zap className={`w-4 h-4 ${isLowTokens ? "fill-red-400" : ""}`} />
         <span className="font-mono text-sm">

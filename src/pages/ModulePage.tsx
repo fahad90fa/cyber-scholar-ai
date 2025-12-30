@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { ChatMessage } from "@/components/chat/ChatMessage";
 import { ChatInput } from "@/components/chat/ChatInput";
+import { TokenBalance } from "@/components/chat/TokenBalance";
 import { useChat } from "@/hooks/useChat";
 import { Button } from "@/components/ui/button";
 import { Trash2, Search, Bug, Package, Code, Terminal, Shield } from "lucide-react";
@@ -90,17 +91,20 @@ const ModulePage = () => {
             <p className="text-sm text-muted-foreground">{config.description}</p>
           </div>
         </div>
-        {messages.length > 0 && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={clearMessages}
-            className="text-muted-foreground hover:text-destructive"
-          >
-            <Trash2 className="w-4 h-4 mr-2" />
-            Clear
-          </Button>
-        )}
+        <div className="flex items-center gap-4">
+          <TokenBalance />
+          {messages.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearMessages}
+              className="text-muted-foreground hover:text-destructive"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Clear
+            </Button>
+          )}
+        </div>
       </header>
 
       {/* Chat Area */}
