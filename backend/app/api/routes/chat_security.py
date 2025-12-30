@@ -118,6 +118,12 @@ async def set_password(
         try:
             supabase.table("profiles").update({
                 "chat_security_enabled": True,
+                "chat_password_hash": password_hash,
+                "chat_password_salt": salt,
+                "chat_security_hint": req.hint,
+                "chat_password_set_at": chat_security.chat_password_set_at.isoformat(),
+                "failed_chat_password_attempts": 0,
+                "chat_locked_until": None,
             }).eq("id", current_user.id).execute()
         except Exception as supabase_err:
             print(f"Warning: Failed to update Supabase profile: {supabase_err}")
@@ -169,6 +175,15 @@ async def verify_password(
             except Exception as db_error:
                 db.rollback()
 
+            try:
+                supabase.table("profiles").update({
+                    "failed_chat_password_attempts": 0,
+                    "chat_locked_until": None,
+                    "last_chat_access": chat_security.last_chat_access.isoformat(),
+                }).eq("id", current_user.id).execute()
+            except Exception as supabase_err:
+                print(f"Warning: Failed to update Supabase profile: {supabase_err}")
+
             chat_session_token = secrets.token_hex(32)
             expires_at = (datetime.utcnow() + timedelta(minutes=60)).isoformat()
 
@@ -193,6 +208,14 @@ async def verify_password(
                 db.commit()
             except Exception as db_error:
                 db.rollback()
+
+            try:
+                supabase.table("profiles").update({
+                    "failed_chat_password_attempts": new_attempts,
+                    "chat_locked_until": lock_until.isoformat() if lock_until else None,
+                }).eq("id", current_user.id).execute()
+            except Exception as supabase_err:
+                print(f"Warning: Failed to update Supabase profile: {supabase_err}")
 
             return {
                 "success": False,
@@ -254,7 +277,9 @@ async def change_password(
 
         try:
             supabase.table("profiles").update({
-                "chat_password_set_at": datetime.utcnow().isoformat(),
+                "chat_password_hash": new_hash,
+                "chat_password_salt": new_salt,
+                "chat_password_set_at": chat_security.chat_password_set_at.isoformat(),
             }).eq("id", current_user.id).execute()
         except Exception as supabase_err:
             print(f"Warning: Failed to update Supabase profile: {supabase_err}")
@@ -342,6 +367,32 @@ async def get_profile(
     try:
         chat_security = db.query(ChatSecurity).filter(ChatSecurity.user_id == current_user.id).first()
         
+        if not chat_security:
+            # Try to fetch from Supabase if not in local DB
+            try:
+                response = supabase.table("profiles").select("*").eq("id", current_user.id).execute()
+                if response.data and len(response.data) > 0:
+                    profile = response.data[0]
+                    if profile.get("chat_security_enabled"):
+                        # Create local record from Supabase data
+                        chat_security = ChatSecurity(
+                            user_id=current_user.id,
+                            chat_security_enabled=profile.get("chat_security_enabled", False),
+                            chat_password_hash=profile.get("chat_password_hash"),
+                            chat_password_salt=profile.get("chat_password_salt"),
+                            chat_security_hint=profile.get("chat_security_hint"),
+                            chat_password_set_at=datetime.fromisoformat(profile.get("chat_password_set_at").replace('Z', '+00:00')) if profile.get("chat_password_set_at") else None,
+                            failed_chat_password_attempts=profile.get("failed_chat_password_attempts", 0),
+                            chat_locked_until=datetime.fromisoformat(profile.get("chat_locked_until").replace('Z', '+00:00')) if profile.get("chat_locked_until") else None,
+                            last_chat_access=datetime.fromisoformat(profile.get("last_chat_access").replace('Z', '+00:00')) if profile.get("last_chat_access") else None,
+                        )
+                        db.add(chat_security)
+                        db.commit()
+                        db.refresh(chat_security)
+            except Exception as supabase_err:
+                print(f"Warning: Failed to fetch/sync from Supabase: {supabase_err}")
+                db.rollback()
+
         if not chat_security:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
