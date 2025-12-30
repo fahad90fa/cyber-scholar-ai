@@ -13,6 +13,16 @@ import ContactPage from "./pages/ContactPage";
 import LogoutPage from "./pages/LogoutPage";
 import NotFound from "./pages/NotFound";
 import PricingPage from "./pages/PricingPage";
+import FeaturesPage from "./pages/FeaturesPage";
+import ModulesPage from "./pages/ModulesPage";
+import SecurityPage from "./pages/SecurityPage";
+import AboutPage from "./pages/AboutPage";
+import BlogPage from "./pages/BlogPage";
+import CareersPage from "./pages/CareersPage";
+import PrivacyPage from "./pages/PrivacyPage";
+import TermsPage from "./pages/TermsPage";
+import CookiesPage from "./pages/CookiesPage";
+import LicensesPage from "./pages/LicensesPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import CheckRequestPage from "./pages/CheckRequestPage";
 import SubscriptionDashboardPage from "./pages/SubscriptionDashboardPage";
@@ -66,6 +76,16 @@ export const AppRouter = () => {
       <Route path="/login" element={<PublicRoute><AuthPage /></PublicRoute>} />
       <Route path="/register" element={<PublicRoute><AuthPage initialMode="register" /></PublicRoute>} />
       <Route path="/pricing" element={<PricingPage />} />
+      <Route path="/features" element={<FeaturesPage />} />
+      <Route path="/modules-info" element={<ModulesPage />} />
+      <Route path="/security" element={<SecurityPage />} />
+      <Route path="/about" element={<AboutPage />} />
+      <Route path="/blog" element={<BlogPage />} />
+      <Route path="/careers" element={<CareersPage />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
+      <Route path="/terms" element={<TermsPage />} />
+      <Route path="/cookies" element={<CookiesPage />} />
+      <Route path="/licenses" element={<LicensesPage />} />
       <Route path="/contact" element={<ContactPage />} />
       <Route path="/logout" element={<LogoutPage />} />
       

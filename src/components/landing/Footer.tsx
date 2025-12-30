@@ -15,15 +15,30 @@ const Footer = () => {
   const footerSections = [
     {
       title: "Product",
-      links: ["Features", "Pricing", "Modules", "Security"]
+      links: [
+        { name: "Features", href: "/features" },
+        { name: "Pricing", href: "/pricing" },
+        { name: "Modules", href: "/modules-info" },
+        { name: "Security", href: "/security" }
+      ]
     },
     {
       title: "Company",
-      links: ["About", "Blog", "Careers", "Contact"]
+      links: [
+        { name: "About", href: "/about" },
+        { name: "Blog", href: "/blog" },
+        { name: "Careers", href: "/careers" },
+        { name: "Contact", href: "/contact" }
+      ]
     },
     {
       title: "Legal",
-      links: ["Privacy", "Terms", "Cookies", "Licenses"]
+      links: [
+        { name: "Privacy", href: "/privacy" },
+        { name: "Terms", href: "/terms" },
+        { name: "Cookies", href: "/cookies" },
+        { name: "Licenses", href: "/licenses" }
+      ]
     }
   ];
 
@@ -97,12 +112,12 @@ const Footer = () => {
                     key={linkIndex}
                     whileHover={{ x: 5 }}
                   >
-                    <a
-                      href={section.title === "Product" && linkIndex === 0 ? "#features" : section.title === "Product" && linkIndex === 1 ? "#pricing" : "#"}
+                    <Link
+                      to={link.href}
                       className="text-muted-foreground hover:text-primary transition-colors"
                     >
-                      {link}
-                    </a>
+                      {link.name}
+                    </Link>
                   </motion.li>
                 ))}
               </ul>

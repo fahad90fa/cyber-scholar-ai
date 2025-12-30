@@ -9,7 +9,12 @@ const Navbar = () => {
 
   const toggleMenu = () => setIsOpen(!isOpen);
 
-  const navLinks = ["features", "how-it-works", "pricing", "faq"];
+  const navLinks = [
+    { name: "Features", href: "/features" },
+    { name: "Pricing", href: "/pricing" },
+    { name: "Modules", href: "/modules-info" },
+    { name: "Security", href: "/security" }
+  ];
 
   return (
     <motion.nav 
@@ -35,14 +40,15 @@ const Navbar = () => {
 
           <div className="hidden md:flex items-center gap-8">
             {navLinks.map((link) => (
-              <motion.a
-                key={link}
-                href={`#${link}`}
+              <Link
+                key={link.name}
+                to={link.href}
                 className="text-muted-foreground hover:text-primary transition-colors"
-                whileHover={{ y: -2 }}
               >
-                {link.replace("-", " ").charAt(0).toUpperCase() + link.replace("-", " ").slice(1)}
-              </motion.a>
+                <motion.span whileHover={{ y: -2 }} className="inline-block">
+                  {link.name}
+                </motion.span>
+              </Link>
             ))}
           </div>
 
@@ -85,13 +91,14 @@ const Navbar = () => {
             exit={{ opacity: 0, y: -10 }}
           >
             {navLinks.map((link) => (
-              <a
-                key={link}
-                href={`#${link}`}
+              <Link
+                key={link.name}
+                to={link.href}
                 className="block px-4 py-2 text-muted-foreground hover:text-primary hover:bg-primary/5 rounded-lg transition-colors"
+                onClick={() => setIsOpen(false)}
               >
-                {link.replace("-", " ").charAt(0).toUpperCase() + link.replace("-", " ").slice(1)}
-              </a>
+                {link.name}
+              </Link>
             ))}
             <div className="pt-4 flex gap-2 px-4">
               <Link to="/login" className="flex-1">
