@@ -55,6 +55,12 @@ const AdminSettingsPage = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [bankSettings, setBankSettings] = useState(defaultBankSettings);
   const [generalSettings, setGeneralSettings] = useState(defaultGeneralSettings);
+  const [tokenConfig, setTokenConfig] = useState({
+    cost_per_message: 5,
+    cost_per_character_response: 0,
+    enabled_per_message: true,
+    enabled_per_character: false,
+  });
 
   useEffect(() => {
     if (initialBankSettings && Object.keys(initialBankSettings).length > 0) {
@@ -92,6 +98,38 @@ const AdminSettingsPage = () => {
       }
     }
   }, [initialBankSettings]);
+
+  useEffect(() => {
+    loadTokenConfig();
+  }, []);
+
+  const loadTokenConfig = async () => {
+    try {
+      const config = await adminService.getTokenConfig();
+      if (config) {
+        setTokenConfig({
+          cost_per_message: parseFloat(config.cost_per_message) || 5,
+          cost_per_character_response: parseFloat(config.cost_per_character_response) || 0,
+          enabled_per_message: !!config.enabled_per_message,
+          enabled_per_character: !!config.enabled_per_character,
+        });
+      }
+    } catch (error) {
+      console.error("Failed to load token config", error);
+    }
+  };
+
+  const handleSaveTokenConfig = async () => {
+    try {
+      setIsSaving(true);
+      await adminService.updateTokenConfig(tokenConfig);
+      toast.success("Token configuration saved successfully");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to save token configuration");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleSaveBankSettings = async () => {
     try {
@@ -156,6 +194,7 @@ const AdminSettingsPage = () => {
           <TabsList className="bg-card border border-primary/10">
             <TabsTrigger value="bank">Bank Details</TabsTrigger>
             <TabsTrigger value="general">General Settings</TabsTrigger>
+            <TabsTrigger value="tokens">Token Cost</TabsTrigger>
             <TabsTrigger value="activity">Activity Log</TabsTrigger>
           </TabsList>
 
@@ -454,6 +493,107 @@ const AdminSettingsPage = () => {
                 className="w-full"
               >
                 {isSaving ? "Saving..." : "Save General Settings"}
+              </Button>
+            </Card>
+          </TabsContent>
+
+          {/* Token Cost Tab */}
+          <TabsContent value="tokens">
+            <Card className="p-6 bg-card border-primary/10 space-y-6">
+              <div>
+                <h3 className="text-lg font-bold text-foreground mb-4">
+                  Token Cost Configuration
+                </h3>
+                <p className="text-sm text-muted-foreground mb-6">
+                  Configure how tokens are deducted for AI interactions
+                </p>
+              </div>
+
+              <div className="space-y-6">
+                <div className="p-4 bg-primary/5 rounded-lg space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <label className="text-sm font-medium text-foreground">
+                        Cost Per Message
+                      </label>
+                      <p className="text-xs text-muted-foreground">
+                        Fixed number of tokens deducted per message
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <Checkbox
+                        checked={tokenConfig.enabled_per_message}
+                        onCheckedChange={(checked) =>
+                          setTokenConfig({
+                            ...tokenConfig,
+                            enabled_per_message: checked as boolean,
+                          })
+                        }
+                        id="enable_message_cost"
+                      />
+                      <Input
+                        type="number"
+                        value={tokenConfig.cost_per_message}
+                        onChange={(e) =>
+                          setTokenConfig({
+                            ...tokenConfig,
+                            cost_per_message: parseFloat(e.target.value) || 0,
+                          })
+                        }
+                        disabled={!tokenConfig.enabled_per_message}
+                        className="w-24 h-8"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <label className="text-sm font-medium text-foreground">
+                        Cost Per Character (Response)
+                      </label>
+                      <p className="text-xs text-muted-foreground">
+                        Tokens deducted based on AI response length
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <Checkbox
+                        checked={tokenConfig.enabled_per_character}
+                        onCheckedChange={(checked) =>
+                          setTokenConfig({
+                            ...tokenConfig,
+                            enabled_per_character: checked as boolean,
+                          })
+                        }
+                        id="enable_character_cost"
+                      />
+                      <Input
+                        type="number"
+                        step="0.001"
+                        value={tokenConfig.cost_per_character_response}
+                        onChange={(e) =>
+                          setTokenConfig({
+                            ...tokenConfig,
+                            cost_per_character_response: parseFloat(e.target.value) || 0,
+                          })
+                        }
+                        disabled={!tokenConfig.enabled_per_character}
+                        className="w-24 h-8"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="text-sm text-muted-foreground p-3 bg-secondary/20 rounded border border-primary/5">
+                  <p>Current Setting: <strong>{tokenConfig.cost_per_message} tokens</strong> per message.</p>
+                </div>
+              </div>
+
+              <Button
+                onClick={handleSaveTokenConfig}
+                disabled={isSaving}
+                className="w-full"
+              >
+                {isSaving ? "Saving..." : "Save Token Configuration"}
               </Button>
             </Card>
           </TabsContent>

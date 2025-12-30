@@ -1,13 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-admin-token",
-  "Access-Control-Max-Age": "86400",
-  "Content-Type": "application/json",
-};
+import { corsHeaders, getCorsHeaders } from "../_shared/cors.ts";
 
 const verifyAdminToken = (token: string | null): boolean => {
   if (!token) {
@@ -30,10 +23,11 @@ const verifyAdminToken = (token: string | null): boolean => {
 };
 
 serve(async (req) => {
+  const currentCorsHeaders = getCorsHeaders(req.headers.get('Origin'));
   if (req.method === "OPTIONS") {
     return new Response("", {
       status: 200,
-      headers: corsHeaders,
+      headers: currentCorsHeaders,
     });
   }
 
@@ -54,7 +48,7 @@ serve(async (req) => {
       console.log('Token verification failed!');
       return new Response(
         JSON.stringify({ error: "Unauthorized", receivedToken: adminToken }),
-        { status: 401, headers: corsHeaders }
+        { status: 401, headers: currentCorsHeaders }
       );
     }
     
@@ -101,7 +95,7 @@ serve(async (req) => {
 
         return new Response(JSON.stringify(user || {}), {
           status: 200,
-          headers: corsHeaders,
+          headers: currentCorsHeaders,
         });
       }
 
@@ -145,14 +139,14 @@ serve(async (req) => {
       console.log("Fetched users:", users?.length || 0);
       return new Response(JSON.stringify(users || []), {
         status: 200,
-        headers: corsHeaders,
+        headers: currentCorsHeaders,
       });
     } else if (req.method === "PUT") {
       // Update user
       if (!isUserSpecific) {
         return new Response(
           JSON.stringify({ error: "User ID required" }),
-          { status: 400, headers: corsHeaders }
+          { status: 400, headers: currentCorsHeaders }
         );
       }
 
@@ -167,7 +161,7 @@ serve(async (req) => {
 
       return new Response(JSON.stringify(updatedUser?.[0]), {
         status: 200,
-        headers: corsHeaders,
+        headers: currentCorsHeaders,
       });
     } else if (req.method === "POST") {
       // Handle action-based endpoints
@@ -187,7 +181,7 @@ serve(async (req) => {
         if (error) throw error;
         return new Response(JSON.stringify(updatedUser?.[0]), {
           status: 200,
-          headers: corsHeaders,
+          headers: currentCorsHeaders,
         });
       } else if (action === "unban") {
         const { data: updatedUser, error } = await supabase
@@ -203,7 +197,7 @@ serve(async (req) => {
         if (error) throw error;
         return new Response(JSON.stringify(updatedUser?.[0]), {
           status: 200,
-          headers: corsHeaders,
+          headers: currentCorsHeaders,
         });
       } else if (action === "tokens") {
         const tokensIdx = pathSegments.indexOf("tokens");
@@ -245,7 +239,7 @@ serve(async (req) => {
 
           return new Response(JSON.stringify(updatedUser?.[0]), {
             status: 200,
-            headers: corsHeaders,
+            headers: currentCorsHeaders,
           });
         } else if (subaction === "remove") {
           // Remove tokens
@@ -283,7 +277,7 @@ serve(async (req) => {
 
           return new Response(JSON.stringify(updatedUser?.[0]), {
             status: 200,
-            headers: corsHeaders,
+            headers: currentCorsHeaders,
           });
         }
       }
@@ -291,13 +285,13 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({ error: "Method not allowed" }),
-      { status: 405, headers: corsHeaders }
+      { status: 405, headers: currentCorsHeaders }
     );
   } catch (error) {
     console.error("Error:", error);
     return new Response(
       JSON.stringify({ error: "Internal error" }),
-      { status: 500, headers: corsHeaders }
+      { status: 500, headers: currentCorsHeaders }
     );
   }
 });

@@ -432,6 +432,22 @@ class AdminService {
     const response = await apiClient.put(`/admin/contacts/${requestId}`, data);
     return response;
   }
+
+  // Token Configuration
+  async getTokenConfig() {
+    const response = await apiClient.get<any>("/admin/token-config");
+    return response;
+  }
+
+  async updateTokenConfig(data: {
+    cost_per_message?: number;
+    cost_per_character_response?: number;
+    enabled_per_message?: boolean;
+    enabled_per_character?: boolean;
+  }) {
+    const response = await apiClient.put("/admin/token-config", data);
+    return response;
+  }
 }
 
 export const adminService = new AdminService();

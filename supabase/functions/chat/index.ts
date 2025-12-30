@@ -1,10 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { corsHeaders, getCorsHeaders } from "../_shared/cors.ts";
 
 const ALLOWED_PATTERNS = [
   /\b(hacking|ethical|penetration|security|testing)\b/i,
@@ -168,7 +164,7 @@ const deductUserToken = async (userId: string, supabase: any): Promise<boolean> 
 
     const totalTokens = (currentTokens.tokens_total || 0) + (currentTokens.bonus_tokens || 0);
     const usedTokens = currentTokens.tokens_used || 0;
-    const newTokensUsed = usedTokens + 1;
+    const newTokensUsed = usedTokens + 5;
     
     const { error: updateError } = await supabase
       .from('profiles')
@@ -183,7 +179,7 @@ const deductUserToken = async (userId: string, supabase: any): Promise<boolean> 
     await supabase.from('token_transactions').insert({
       user_id: userId,
       type: 'usage',
-      amount: 1,
+      amount: 5,
       balance_before: Math.max(0, totalTokens - usedTokens),
       balance_after: Math.max(0, totalTokens - newTokensUsed),
       reason: 'Chat message',
@@ -192,7 +188,7 @@ const deductUserToken = async (userId: string, supabase: any): Promise<boolean> 
       console.error('Error logging transaction:', err);
     });
 
-    console.log(`Deducted 1 token from user ${userId}. New used: ${newTokensUsed}`);
+    console.log(`Deducted 5 tokens from user ${userId}. New used: ${newTokensUsed}`);
     return true;
   } catch (deductErr) {
     console.error('Error deducting token:', deductErr);
@@ -221,8 +217,9 @@ const getUserIdFromAuth = (req: Request): string | null => {
 };
 
 serve(async (req) => {
+  const currentCorsHeaders = getCorsHeaders(req.headers.get('Origin'));
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: currentCorsHeaders });
   }
 
   let tokenDeducted = false;
@@ -236,7 +233,7 @@ serve(async (req) => {
         error: 'Invalid request: messages array required' 
       }), {
         status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...currentCorsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
@@ -247,7 +244,7 @@ serve(async (req) => {
         error: 'Service configuration error' 
       }), {
         status: 503,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...currentCorsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
@@ -259,7 +256,7 @@ serve(async (req) => {
         error: 'Service configuration error' 
       }), {
         status: 503,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...currentCorsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
@@ -271,7 +268,7 @@ serve(async (req) => {
         error: 'Authentication required to use chat' 
       }), {
         status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...currentCorsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
@@ -287,7 +284,7 @@ serve(async (req) => {
         error: 'Failed to verify user profile' 
       }), {
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...currentCorsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
@@ -296,7 +293,7 @@ serve(async (req) => {
         error: 'User profile not found' 
       }), {
         status: 404,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...currentCorsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
@@ -306,7 +303,7 @@ serve(async (req) => {
         message: 'Please complete the onboarding process before using chat features.'
       }), {
         status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...currentCorsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
@@ -322,7 +319,7 @@ serve(async (req) => {
         totalTokens: totalTokens
       }), {
         status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...currentCorsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
@@ -335,7 +332,7 @@ serve(async (req) => {
         error: 'Invalid request: no user message found' 
       }), {
         status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...currentCorsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
@@ -348,7 +345,7 @@ serve(async (req) => {
         hasWarning: true
       }), {
         status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...currentCorsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
@@ -426,7 +423,7 @@ serve(async (req) => {
         code: statusCode 
       }), {
         status: statusCode >= 500 ? 503 : statusCode,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...currentCorsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
@@ -439,7 +436,7 @@ serve(async (req) => {
 
     return new Response(response.body, {
       headers: { 
-        ...corsHeaders, 
+        ...currentCorsHeaders, 
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive'
@@ -457,7 +454,7 @@ serve(async (req) => {
       tokenDeducted
     }), {
       status: statusCode,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...currentCorsHeaders, 'Content-Type': 'application/json' },
     });
   }
 });

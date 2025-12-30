@@ -1,11 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { hash, verify } from "https://deno.land/x/bcrypt@v0.4.1/mod.ts"
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-}
+import { corsHeaders, getCorsHeaders } from "../_shared/cors.ts"
 
 function isStrongPassword(password: string): boolean {
   if (password.length < 8) return false
@@ -17,8 +13,9 @@ function isStrongPassword(password: string): boolean {
 }
 
 serve(async (req) => {
+  const currentCorsHeaders = getCorsHeaders(req.headers.get('Origin'));
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders })
+    return new Response("ok", { headers: currentCorsHeaders })
   }
 
   try {
@@ -39,7 +36,7 @@ serve(async (req) => {
               success: false,
               message: "Password must be at least 8 characters with uppercase, lowercase, number, and special character"
             }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            { headers: { ...currentCorsHeaders, "Content-Type": "application/json" } }
           )
         }
 
@@ -71,7 +68,7 @@ serve(async (req) => {
 
         return new Response(
           JSON.stringify({ success: true, message: "Chat password set successfully" }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { headers: { ...currentCorsHeaders, "Content-Type": "application/json" } }
         )
       }
 
@@ -101,7 +98,7 @@ serve(async (req) => {
               locked_until: profile.chat_locked_until,
               message: "Too many failed attempts. Please try again later."
             }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            { headers: { ...currentCorsHeaders, "Content-Type": "application/json" } }
           )
         }
 
@@ -138,7 +135,7 @@ serve(async (req) => {
               chatSessionToken,
               expiresAt: tokenExpiry.toISOString()
             }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            { headers: { ...currentCorsHeaders, "Content-Type": "application/json" } }
           )
         } else {
           const newAttempts = (profile.failed_chat_password_attempts || 0) + 1
@@ -175,7 +172,7 @@ serve(async (req) => {
               attempts_remaining: Math.max(0, 5 - newAttempts),
               message: "Incorrect password"
             }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            { headers: { ...currentCorsHeaders, "Content-Type": "application/json" } }
           )
         }
       }
@@ -195,7 +192,7 @@ serve(async (req) => {
         if (!isCurrentValid) {
           return new Response(
             JSON.stringify({ success: false, message: "Current password is incorrect" }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            { headers: { ...currentCorsHeaders, "Content-Type": "application/json" } }
           )
         }
 
@@ -205,7 +202,7 @@ serve(async (req) => {
               success: false,
               message: "New password must be at least 8 characters with uppercase, lowercase, number, and special character"
             }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            { headers: { ...currentCorsHeaders, "Content-Type": "application/json" } }
           )
         }
 
@@ -231,7 +228,7 @@ serve(async (req) => {
 
         return new Response(
           JSON.stringify({ success: true, message: "Password changed successfully" }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { headers: { ...currentCorsHeaders, "Content-Type": "application/json" } }
         )
       }
 
@@ -250,7 +247,7 @@ serve(async (req) => {
         if (!isValid) {
           return new Response(
             JSON.stringify({ success: false, message: "Incorrect password" }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            { headers: { ...currentCorsHeaders, "Content-Type": "application/json" } }
           )
         }
 
@@ -277,14 +274,14 @@ serve(async (req) => {
 
         return new Response(
           JSON.stringify({ success: true, message: "Chat security disabled" }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { headers: { ...currentCorsHeaders, "Content-Type": "application/json" } }
         )
       }
 
       default:
         return new Response(
           JSON.stringify({ error: "Invalid action" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 400, headers: { ...currentCorsHeaders, "Content-Type": "application/json" } }
         )
     }
   } catch (error) {
@@ -295,7 +292,7 @@ serve(async (req) => {
         error: errorMessage,
         success: false
       }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: { ...currentCorsHeaders, "Content-Type": "application/json" } }
     )
   }
 })

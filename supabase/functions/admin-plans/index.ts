@@ -1,13 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-admin-token",
-  "Access-Control-Max-Age": "86400",
-  "Content-Type": "application/json",
-};
+import { corsHeaders, getCorsHeaders } from "../_shared/cors.ts";
 
 const verifyAdminToken = (token: string | null): boolean => {
   if (!token) return false;
@@ -21,10 +14,11 @@ const verifyAdminToken = (token: string | null): boolean => {
 };
 
 serve(async (req) => {
+  const currentCorsHeaders = getCorsHeaders(req.headers.get('Origin'));
   if (req.method === "OPTIONS") {
     return new Response("", {
       status: 200,
-      headers: corsHeaders,
+      headers: currentCorsHeaders,
     });
   }
 
@@ -46,7 +40,7 @@ serve(async (req) => {
       if (!verifyAdminToken(adminToken)) {
         return new Response(
           JSON.stringify({ error: "Unauthorized" }),
-          { status: 401, headers: corsHeaders }
+          { status: 401, headers: currentCorsHeaders }
         );
       }
 
@@ -67,13 +61,13 @@ serve(async (req) => {
 
       return new Response(JSON.stringify(plans || []), {
         status: 200,
-        headers: corsHeaders,
+        headers: currentCorsHeaders,
       });
     } catch (error) {
       console.error("Error:", error);
       return new Response(
         JSON.stringify({ error: "Internal error" }),
-        { status: 500, headers: corsHeaders }
+        { status: 500, headers: currentCorsHeaders }
       );
     }
   } else if (req.method === "POST") {
@@ -89,7 +83,7 @@ serve(async (req) => {
       if (!verifyAdminToken(adminToken)) {
         return new Response(
           JSON.stringify({ error: "Unauthorized" }),
-          { status: 401, headers: corsHeaders }
+          { status: 401, headers: currentCorsHeaders }
         );
       }
 
@@ -111,13 +105,13 @@ serve(async (req) => {
 
       return new Response(JSON.stringify(newPlan?.[0]), {
         status: 201,
-        headers: corsHeaders,
+        headers: currentCorsHeaders,
       });
     } catch (error) {
       console.error("Error:", error);
       return new Response(
         JSON.stringify({ error: "Internal error" }),
-        { status: 500, headers: corsHeaders }
+        { status: 500, headers: currentCorsHeaders }
       );
     }
   } else if (req.method === "PUT") {
@@ -133,7 +127,7 @@ serve(async (req) => {
       if (!verifyAdminToken(adminToken)) {
         return new Response(
           JSON.stringify({ error: "Unauthorized" }),
-          { status: 401, headers: corsHeaders }
+          { status: 401, headers: currentCorsHeaders }
         );
       }
 
@@ -146,7 +140,7 @@ serve(async (req) => {
       if (!isPlanSpecific) {
         return new Response(
           JSON.stringify({ error: "Plan ID required for update" }),
-          { status: 400, headers: corsHeaders }
+          { status: 400, headers: currentCorsHeaders }
         );
       }
 
@@ -163,13 +157,13 @@ serve(async (req) => {
 
       return new Response(JSON.stringify(updatedPlan?.[0]), {
         status: 200,
-        headers: corsHeaders,
+        headers: currentCorsHeaders,
       });
     } catch (error) {
       console.error("Error:", error);
       return new Response(
         JSON.stringify({ error: "Internal error" }),
-        { status: 500, headers: corsHeaders }
+        { status: 500, headers: currentCorsHeaders }
       );
     }
   } else if (req.method === "DELETE") {
@@ -185,7 +179,7 @@ serve(async (req) => {
       if (!verifyAdminToken(adminToken)) {
         return new Response(
           JSON.stringify({ error: "Unauthorized" }),
-          { status: 401, headers: corsHeaders }
+          { status: 401, headers: currentCorsHeaders }
         );
       }
 
@@ -198,7 +192,7 @@ serve(async (req) => {
       if (!isPlanSpecific) {
         return new Response(
           JSON.stringify({ error: "Plan ID required for delete" }),
-          { status: 400, headers: corsHeaders }
+          { status: 400, headers: currentCorsHeaders }
         );
       }
 
@@ -213,19 +207,19 @@ serve(async (req) => {
 
       return new Response(JSON.stringify({ success: true }), {
         status: 200,
-        headers: corsHeaders,
+        headers: currentCorsHeaders,
       });
     } catch (error) {
       console.error("Error:", error);
       return new Response(
         JSON.stringify({ error: "Internal error" }),
-        { status: 500, headers: corsHeaders }
+        { status: 500, headers: currentCorsHeaders }
       );
     }
   }
 
   return new Response(
     JSON.stringify({ error: "Method not allowed" }),
-    { status: 405, headers: corsHeaders }
+    { status: 405, headers: currentCorsHeaders }
   );
 });

@@ -1,10 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { corsHeaders, getCorsHeaders } from "../_shared/cors.ts";
 
 const ALLOWED_PATTERNS = [
   /\b(hacking|ethical|penetration|security|testing)\b/i,
@@ -101,8 +97,9 @@ function getUserIdFromAuth(req: Request): string | null {
 }
 
 serve(async (req) => {
+  const currentCorsHeaders = getCorsHeaders(req.headers.get('Origin'));
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: currentCorsHeaders });
   }
 
   try {
@@ -114,7 +111,7 @@ serve(async (req) => {
         context: [] 
       }), {
         status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...currentCorsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
@@ -125,7 +122,7 @@ serve(async (req) => {
         context: []
       }), {
         status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...currentCorsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
@@ -136,7 +133,7 @@ serve(async (req) => {
         context: [] 
       }), {
         status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...currentCorsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
@@ -168,14 +165,14 @@ serve(async (req) => {
         context: [] 
       }), {
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...currentCorsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
     if (!chunks || chunks.length === 0) {
       console.log(`No chunks found for user ${requestUserId}`);
       return new Response(JSON.stringify({ context: [] }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...currentCorsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
@@ -206,7 +203,7 @@ serve(async (req) => {
       timestamp: new Date().toISOString()
     }), {
       headers: { 
-        ...corsHeaders, 
+        ...currentCorsHeaders, 
         'Content-Type': 'application/json',
         'Cache-Control': 'no-cache'
       },
@@ -219,7 +216,7 @@ serve(async (req) => {
       context: []
     }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...currentCorsHeaders, 'Content-Type': 'application/json' },
     });
   }
 });

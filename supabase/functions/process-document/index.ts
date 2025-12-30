@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders, getCorsHeaders } from "../_shared/cors.ts";
 
 async function computeSHA256(data: string): Promise<string> {
   const encoder = new TextEncoder();
@@ -7,11 +8,6 @@ async function computeSHA256(data: string): Promise<string> {
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
 }
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
 
 const CHUNK_SIZE = 1000;
 const CHUNK_OVERLAP = 200;
@@ -116,8 +112,9 @@ function validateDocumentContent(content: string): { valid: boolean; reason?: st
 }
 
 serve(async (req) => {
+  const currentCorsHeaders = getCorsHeaders(req.headers.get('Origin'));
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: currentCorsHeaders });
   }
 
   try {
@@ -125,7 +122,7 @@ serve(async (req) => {
     if (!authHeader) {
       return new Response(
         JSON.stringify({ error: 'Missing authorization header' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 401, headers: { ...currentCorsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -136,7 +133,7 @@ serve(async (req) => {
       console.error('Missing Supabase configuration');
       return new Response(
         JSON.stringify({ error: 'Service configuration error' }),
-        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 503, headers: { ...currentCorsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -148,7 +145,7 @@ serve(async (req) => {
     if (!validation.valid) {
       return new Response(
         JSON.stringify({ error: validation.error }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...currentCorsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -158,7 +155,7 @@ serve(async (req) => {
     if (!contentValidation.valid) {
       return new Response(
         JSON.stringify({ error: contentValidation.reason }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...currentCorsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
@@ -169,7 +166,7 @@ serve(async (req) => {
     if (chunks.length === 0) {
       return new Response(
         JSON.stringify({ error: 'No valid chunks could be created from content' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...currentCorsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -192,7 +189,7 @@ serve(async (req) => {
       console.error('Error inserting chunks:', chunkError);
       return new Response(
         JSON.stringify({ error: 'Failed to store document chunks' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: { ...currentCorsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -212,7 +209,7 @@ serve(async (req) => {
       console.error('Error updating document status:', updateError);
       return new Response(
         JSON.stringify({ error: 'Failed to update document status' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: { ...currentCorsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -225,7 +222,7 @@ serve(async (req) => {
       contentSize: content.length,
       timestamp: new Date().toISOString()
     }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...currentCorsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
@@ -236,7 +233,7 @@ serve(async (req) => {
       success: false
     }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...currentCorsHeaders, 'Content-Type': 'application/json' },
     });
   }
 });
