@@ -421,6 +421,17 @@ class AdminService {
     const response = await apiClient.get("/admin/info/mac-stats");
     return response;
   }
+
+  // Contact Requests
+  async getContacts(params?: { limit?: number; offset?: number }) {
+    const response = await apiClient.get<any[]>("/admin/contacts", true, params);
+    return response;
+  }
+
+  async updateContact(requestId: string, data: { status: string; admin_notes?: string }) {
+    const response = await apiClient.put(`/admin/contacts/${requestId}`, data);
+    return response;
+  }
 }
 
 export const adminService = new AdminService();

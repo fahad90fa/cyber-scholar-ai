@@ -9,6 +9,7 @@ import ModulePage from "./pages/ModulePage";
 import TrainingPage from "./pages/TrainingPage";
 import TrainingChatPage from "./pages/TrainingChatPage";
 import SettingsPage from "./pages/SettingsPage";
+import ContactPage from "./pages/ContactPage";
 import LogoutPage from "./pages/LogoutPage";
 import NotFound from "./pages/NotFound";
 import PricingPage from "./pages/PricingPage";
@@ -30,6 +31,7 @@ import AdminUsersPage from "./pages/admin/AdminUsersPage";
 import AdminUserDetailPage from "./pages/admin/AdminUserDetailPage";
 import AdminSubscriptionsPage from "./pages/admin/AdminSubscriptionsPage";
 import AdminPlansPage from "./pages/admin/AdminPlansPage";
+import AdminContactPage from "./pages/admin/AdminContactPage";
 import AdminTokenPacksPage from "./pages/admin/AdminTokenPacksPage";
 import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
 import AdminInfoPage from "./pages/admin/AdminInfoPage";
@@ -64,6 +66,7 @@ export const AppRouter = () => {
       <Route path="/login" element={<PublicRoute><AuthPage /></PublicRoute>} />
       <Route path="/register" element={<PublicRoute><AuthPage initialMode="register" /></PublicRoute>} />
       <Route path="/pricing" element={<PricingPage />} />
+      <Route path="/contact" element={<ContactPage />} />
       <Route path="/logout" element={<LogoutPage />} />
       
       {/* Protected Subscription Routes */}
@@ -249,6 +252,14 @@ export const AppRouter = () => {
         element={
           <AdminProtectedRoute>
             <AdminPlansPage />
+          </AdminProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/admin/contact" 
+        element={
+          <AdminProtectedRoute>
+            <AdminContactPage />
           </AdminProtectedRoute>
         } 
       />

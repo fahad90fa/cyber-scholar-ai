@@ -201,7 +201,7 @@ const PricingPage = () => {
                     {plan.is_enterprise && (
                       <Button
                         onClick={() => {
-                          toast.success("Redirecting to contact form...");
+                          navigate(`/contact?plan=${plan.slug}`);
                         }}
                         className="w-full mb-6"
                         variant="outline"

@@ -12,6 +12,7 @@ import {
   X,
   Globe,
   Wifi,
+  Mail,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -30,6 +31,7 @@ const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     { icon: Zap, label: "Payments", href: "/admin/payments" },
     { icon: Shield, label: "Plans", href: "/admin/plans" },
     { icon: Zap, label: "Token Packs", href: "/admin/token-packs" },
+    { icon: Mail, label: "Contact Requests", href: "/admin/contact" },
     { icon: Settings, label: "Settings", href: "/admin/settings" },
   ];
 
