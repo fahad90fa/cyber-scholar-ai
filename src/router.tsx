@@ -9,6 +9,7 @@ import ModulePage from "./pages/ModulePage";
 import TrainingPage from "./pages/TrainingPage";
 import TrainingChatPage from "./pages/TrainingChatPage";
 import SettingsPage from "./pages/SettingsPage";
+import LogoutPage from "./pages/LogoutPage";
 import NotFound from "./pages/NotFound";
 import PricingPage from "./pages/PricingPage";
 import CheckoutPage from "./pages/CheckoutPage";
@@ -63,6 +64,7 @@ export const AppRouter = () => {
       <Route path="/login" element={<PublicRoute><AuthPage /></PublicRoute>} />
       <Route path="/register" element={<PublicRoute><AuthPage initialMode="register" /></PublicRoute>} />
       <Route path="/pricing" element={<PricingPage />} />
+      <Route path="/logout" element={<LogoutPage />} />
       
       {/* Protected Subscription Routes */}
       <Route 

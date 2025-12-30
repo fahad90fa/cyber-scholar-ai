@@ -14,11 +14,7 @@ const SettingsPage = () => {
   const [showDisclaimer, setShowDisclaimer] = useState(true);
 
   const handleLogout = () => {
-    if (window.confirm("Are you sure you want to logout?")) {
-      logout();
-      toast.success("Logged out successfully");
-      navigate("/auth");
-    }
+    navigate("/logout");
   };
 
   return (
