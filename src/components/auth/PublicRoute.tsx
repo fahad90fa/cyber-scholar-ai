@@ -6,7 +6,7 @@ interface PublicRouteProps {
 }
 
 const PublicRoute: React.FC<PublicRouteProps> = ({ children }) => {
-  const { isAuthenticated, loading } = useAuthContext();
+  const { user, isAuthenticated, loading } = useAuthContext();
 
   if (loading) {
     return (
@@ -20,6 +20,9 @@ const PublicRoute: React.FC<PublicRouteProps> = ({ children }) => {
   }
 
   if (isAuthenticated) {
+    if (user && !user.is_verified) {
+      return <Navigate to="/verify-email" replace />;
+    }
     return <Navigate to="/dashboard" replace />;
   }
 

@@ -11,6 +11,7 @@ import TrainingChatPage from "./pages/TrainingChatPage";
 import SettingsPage from "./pages/SettingsPage";
 import ContactPage from "./pages/ContactPage";
 import LogoutPage from "./pages/LogoutPage";
+import EmailVerificationPage from "./pages/EmailVerificationPage";
 import NotFound from "./pages/NotFound";
 import PricingPage from "./pages/PricingPage";
 import FeaturesPage from "./pages/FeaturesPage";
@@ -78,6 +79,7 @@ export const AppRouter = () => {
       <Route path="/modules-info" element={<ModulesPage />} />
       <Route path="/security" element={<SecurityPage />} />
       <Route path="/about" element={<AboutPage />} />
+      <Route path="/verify-email" element={<EmailVerificationPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
       <Route path="/terms" element={<TermsPage />} />
       <Route path="/cookies" element={<CookiesPage />} />
