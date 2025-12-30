@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
-import { callAdminFunction } from '@/utils/adminApi';
+import { adminService } from '@/services/adminService';
 
 export const useAdminStats = () => {
   const { data: stats, isLoading, error } = useQuery({
     queryKey: ['admin', 'stats'],
     queryFn: async () => {
-      return callAdminFunction('admin-stats');
+      return adminService.getDashboardStats();
     },
   });
 

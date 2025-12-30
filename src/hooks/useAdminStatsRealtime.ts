@@ -1,22 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { callAdminFunction } from '@/utils/adminApi';
-
-export interface AdminStats {
-  total_users: number;
-  active_subscriptions: {
-    starter: number;
-    pro: number;
-    pro_plus: number;
-    enterprise: number;
-  };
-  pending_payments: number;
-  monthly_revenue: number;
-  total_revenue: number;
-  token_usage: number;
-  today_signups: number;
-}
+import { adminService, type AdminStats } from '@/services/adminService';
 
 export const useAdminStatsRealtime = () => {
   const queryClient = useQueryClient();
@@ -25,7 +10,7 @@ export const useAdminStatsRealtime = () => {
   const { data: stats, isLoading, error, refetch } = useQuery({
     queryKey: ['admin', 'stats'],
     queryFn: async () => {
-      return callAdminFunction('admin-stats') as Promise<AdminStats>;
+      return adminService.getDashboardStats();
     },
     staleTime: 10000,
   });

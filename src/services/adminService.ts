@@ -13,6 +13,7 @@ export interface AdminStats {
   monthly_revenue: number;
   total_revenue: number;
   token_usage: number;
+  today_signups: number;
 }
 
 export interface AdminUser {
