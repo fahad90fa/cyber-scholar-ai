@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { chatAPI } from '@/services/api';
+import { useSubscription } from './useSubscription';
 
 export interface Message {
   id: string;
@@ -19,6 +20,7 @@ export function useChat(moduleContextOrOptions?: string | UseChatOptions) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const { refetchSubscription } = useSubscription();
 
   const options = typeof moduleContextOrOptions === 'string' 
     ? { module: moduleContextOrOptions } 
@@ -55,6 +57,9 @@ export function useChat(moduleContextOrOptions?: string | UseChatOptions) {
         timestamp: new Date(),
         isWarning: response.ai_response?.includes('EDUCATIONAL DISCLAIMER'),
       }]);
+
+      // Refetch subscription data to update token balance
+      refetchSubscription();
     } catch (error: any) {
       console.error('Chat error:', error);
       

@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import { toast } from 'sonner'
 import { trainingChatAPI } from '@/services/api'
+import { useSubscription } from './useSubscription'
 
 export interface TrainingMessage {
   id: string
@@ -17,6 +18,7 @@ export function useTrainingChat() {
   const [messages, setMessages] = useState<TrainingMessage[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [documents, setDocuments] = useState<any[]>([])
+  const { refetchSubscription } = useSubscription()
 
   const loadDocuments = useCallback(async () => {
     try {
@@ -67,6 +69,9 @@ export function useTrainingChat() {
           sources: response.sources || [],
         },
       ])
+
+      // Refetch subscription data to update token balance
+      refetchSubscription()
     } catch (error: any) {
       console.error('Training chat error:', error)
 
