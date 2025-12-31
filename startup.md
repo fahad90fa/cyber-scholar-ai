@@ -1,61 +1,89 @@
-# Startup Profile: CyberScholar
+# Startup Overview: CyberScholar
 
-![Profile Picture](pfp.jpg)  
-*Replace `pfp.jpg` with your actual profile photo file when converting to PDF.*
-
----
-
-## Founder  
-**Fahad Yousaf**  
-📧 Email: [fahad1562009@gmail.com](mailto:fahad1562009@gmail.com)  
-📱 Phone: +92 332 0407479  
-🌐 Portfolio: [https://fahadyousaf.vercel.app/](https://fahadyousaf.vercel.app/)
+![Fahad Yousaf](pfp.jpg){ width=150px }  
+*Founder & Lead Developer*
 
 ---
 
-## Product: [CyberScholar](https://cyberscholar.site)
+## Founder
 
-### About CyberScholar
-CyberScholar is an AI-powered platform dedicated to revolutionizing cybersecurity education.
+**Name**: Fahad Yousaf  
+**Role**: Full Stack Developer & Cybersecurity Specialist  
+**Location**: Lahore, Pakistan  
+**Email**: [fahad1562009@gmail.com](mailto:fahad1562009@gmail.com)  
+**Phone**: +92 332 0407479  
+**Portfolio**: [https://fahadyousaf.vercel.app/](https://fahadyousaf.vercel.app/)
 
-### Mission  
+---
+
+## Product: CyberScholar
+
+**Website**: [https://cyberscholar.site](https://cyberscholar.site)  
+**Type**: AI-Powered Cybersecurity Education Platform
+
+### About
+CyberScholar is an intelligent learning platform designed to transform how cybersecurity professionals train, practice, and master real-world offensive and defensive techniques. At its core is a **self-trained AI model** built specifically for cybersecurity use cases—trained on ethical hacking methodologies, exploit databases, and red-team workflows.
+
+### Mission
 To empower the next generation of cybersecurity professionals by providing accessible, intelligent, and hands-on learning tools.
 
-### Vision  
+### Vision
 A world where everyone has the opportunity to master the skills needed to protect our digital future.
 
-### Why CyberScholar?
-- 🛡️ **AI-Driven Tutoring**: Personalized learning powered by a self-trained AI model tailored for cybersecurity experts.
-- 🔐 **Realistic Simulations**: Practice offensive and defensive techniques in lifelike environments.
-- 📈 **Progress Tracking**: Monitor skill growth with detailed analytics and milestone achievements.
-- 🌐 **Community Focused**: Learn and collaborate with a global network of security enthusiasts.
+### Key Features
+- **🛡️ AI-Driven Tutoring**: Adaptive, context-aware guidance tailored to user skill level.
+- **🔐 Realistic Simulations**: Safe, legal environments to practice exploits, recon, and defense.
+- **📈 Progress Tracking**: Skill analytics, achievement badges, and learning pathways.
+- **🌐 Community Focused**: Peer discussions, challenge leaderboards, and mentorship.
 
 ---
 
 ## Core Learning Modules
 
-| Module             | Description |
-|--------------------|-------------|
-| **Reconnaissance** | Master the art of information gathering—OSINT, scanning, and footprinting. |
-| **Exploitation**   | Learn to identify and leverage vulnerabilities in systems and applications. |
-| **Payloads**       | Understand and craft custom payloads for post-exploitation and evasion. |
-| **Network Security** | Secure and analyze network traffic, protocols, and infrastructure. |
-| **Web Hacking**    | Dive into OWASP Top 10, XSS, SQLi, CSRF, and modern web app attacks. |
-| **Cloud Security** | Protect infrastructure on AWS, Azure, and GCP with cloud-native strategies. |
+CyberScholar offers structured, project-based modules covering essential cybersecurity domains:
 
-> *All modules feature AI-guided labs, interactive challenges, and certification paths.*
+| Module             | Focus Area |
+|--------------------|------------|
+| **Reconnaissance** | OSINT, network scanning, footprinting, and target enumeration |
+| **Exploitation**   | Vulnerability identification and controlled system compromise |
+| **Payloads**       | Crafting, delivery, and evasion techniques for post-exploitation |
+| **Network Security** | Packet analysis, firewall bypass, and secure architecture design |
+| **Web Hacking**    | OWASP Top 10, XSS, SQLi, CSRF, API abuse, and modern web attacks |
+| **Cloud Security** | Security in AWS/Azure/GCP, IAM misconfigurations, and container hardening |
 
----
-
-## Technology & Innovation
-- **Self-Trained AI Model**: Built specifically for cybersecurity use cases—trained on real-world exploits, defensive techniques, and ethical hacking curricula.
-- **Adaptive Learning Engine**: Adjusts content difficulty based on user performance and goals.
-- **Ethical & Legal Compliance**: All simulations occur in isolated, authorized environments.
+Each module includes guided labs, AI feedback, and certification-ready assessments.
 
 ---
 
-## Get in Touch
-Interested in partnership, investment, or collaboration?  
-Reach out via email or visit my portfolio to explore past projects in full-stack development and security research.
+## Technical Foundation
 
-🔗 [https://fahadyousaf.vercel.app/](https://fahadyousaf.vercel.app/)
+- **Self-Trained AI Model**: Fine-tuned on cybersecurity datasets, exploit repositories (e.g., Exploit-DB), and ethical hacking frameworks.
+- **Secure Lab Environment**: Isolated virtual machines with attack/defense scenarios.
+- **Ethical Compliance**: All activities occur within authorized, legal boundaries.
+
+---
+
+## About the Founder
+
+Fahad Yousaf is a **Full Stack Developer and Cybersecurity Specialist** with:
+- **4+ years** of development experience (30+ web projects delivered)
+- **2+ years** in security research, including penetration testing and red-team exercises
+- Proven expertise in **e-commerce, crypto dashboards, AI integrations**, and **automation systems**
+- Formal education:  
+  - BSc in Information Technology – *University of Management and Technology (UMT)*  
+  - Diploma in Cyber Security – *Arfa Software Technology Park*
+
+He bridges development and security—ensuring every product is **functional, scalable, and secure by design**.
+
+---
+
+## Contact
+
+
+For partnerships, pilot programs, or investment inquiries, please reach out:
+
+📧 **Email**: fahad1562009@gmail.com  
+🌐 **Portfolio**: [https://fahadyousaf.vercel.app/](https://fahadyousaf.vercel.app/)  
+📱 **Phone**: +92 332 0407479
+
+*Detailed case studies and demo access available upon request.*
